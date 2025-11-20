@@ -1,0 +1,55 @@
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+  :root {
+    --radius: 0.75rem;
+    /* Slightly larger radius for softer look */
+  }
+
+  .container {
+    padding: 0.5rem;
+    padding-bottom: 80px;
+    /* Space for navigation */
+  }
+
+  .card {
+    padding: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Larger touch targets */
+  button,
+  .btn,
+  input,
+  select {
+    min-height: 44px;
+    /* Apple's recommended minimum */
+    font-size: 16px;
+    /* Prevent zoom on iOS */
+  }
+
+  /* Calendar adjustments */
+  .dayCell {
+    min-height: 80px;
+    padding: 0.25rem;
+  }
+
+  .dateNumber {
+    font-size: 0.75rem;
+  }
+
+  .shiftItem {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  /* Navigation adjustments */
+  .nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Handle iPhone home bar */
+    height: calc(60px + env(safe-area-inset-bottom));
+  }
+
+  .tab {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

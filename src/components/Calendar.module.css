@@ -1,0 +1,93 @@
+.calendarContainer {
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.monthTitle {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background-color: hsl(var(--border));
+  border: 1px solid hsl(var(--border));
+}
+
+.dayHeader {
+  background-color: hsl(var(--background));
+  padding: 0.5rem;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.875rem;
+}
+
+.dayCell {
+  background-color: hsl(var(--card));
+  min-height: 100px;
+  padding: 0.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.disabled {
+  background-color: hsl(var(--background));
+  color: #999;
+}
+
+.dateNumber {
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.shiftList {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.shiftItem {
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  font-size: 0.75rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.addButton {
+  position: absolute;
+  bottom: 0.25rem;
+  right: 0.25rem;
+  background: none;
+  border: none;
+  color: hsl(var(--primary));
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  padding: 0.25rem;
+  border-radius: 50%;
+}
+
+.addButton:hover {
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+.dayCell:hover .addButton {
+  opacity: 1;
+}
