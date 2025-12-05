@@ -36,3 +36,22 @@
   margin-top: 0.25rem;
   font-weight: 500;
 }
+
+@media (max-width: 768px) {
+  .nav {
+    padding-bottom: env(safe-area-inset-bottom);
+    height: calc(60px + env(safe-area-inset-bottom));
+    background-color: hsl(var(--card));
+    /* Ensure background is opaque */
+    border-top: 1px solid hsl(var(--border));
+  }
+
+  .tab {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .label {
+    font-size: 0.7rem;
+    /* Slightly smaller label on mobile to fit */
+  }
+}

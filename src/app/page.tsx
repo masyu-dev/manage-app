@@ -8,7 +8,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('shift');
 
   return (
-    <main style={{ paddingBottom: '80px', minHeight: '100vh' }}>
+    <main style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))', minHeight: '100vh' }}>
       <div className="container">
         <h1 style={{ margin: '1rem 0', fontSize: '1.5rem' }}>マニージ</h1>
 

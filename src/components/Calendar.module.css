@@ -93,3 +93,27 @@
 .dayCell:hover .addButton {
   opacity: 1;
 }
+
+@media (max-width: 768px) {
+  .dayCell {
+    min-height: 80px;
+    padding: 0.25rem;
+  }
+
+  .dateNumber {
+    font-size: 0.75rem;
+  }
+
+  .shiftItem {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.2rem;
+  }
+
+  .header {
+    margin-bottom: 0.5rem;
+  }
+
+  .monthTitle {
+    font-size: 1.25rem;
+  }
+}
