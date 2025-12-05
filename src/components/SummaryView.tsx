@@ -104,6 +104,17 @@ export default function SummaryView() {
                 className="input"
               />
             </div>
+            <div style={{ marginTop: '0.5rem' }}>
+              <label style={{ fontSize: '0.875rem', display: 'block', marginBottom: '0.25rem' }}>給料日 (日)</label>
+              <input
+                type="number"
+                value={userConfig.payDay}
+                onChange={(e) => updateUserConfig({ payDay: Math.min(31, Math.max(1, Number(e.target.value))) })}
+                className="input"
+                min="1"
+                max="31"
+              />
+            </div>
           </div>
         )}
 

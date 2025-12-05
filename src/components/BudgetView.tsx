@@ -5,24 +5,47 @@ import { useApp } from '@/lib/store';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { calculateMonthlySalary } from '@/lib/calculations';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import BudgetCalendar from './BudgetCalendar';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function BudgetView() {
-  const { transactions, tags, deleteTransaction, userConfig } = useApp();
+  const { transactions, tags, deleteTransaction, userConfig, shifts } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
 
-  const currentMonthTransactions = transactions.filter(t =>
+  // Calculate Estimated Salary
+  const payDay = userConfig.payDay || 25;
+  const payDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), Math.min(payDay, endOfMonth(currentDate).getDate()));
+
+  // Salary is for the previous month
+  const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+  const estimatedSalary = calculateMonthlySalary(shifts, prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1);
+
+  const salaryTransaction = {
+    id: 'salary-schedule',
+    date: payDate.toISOString().split('T')[0],
+    amount: estimatedSalary,
+    type: 'income' as const,
+    tagId: 'salary', // Virtual tag
+    description: '給与予定',
+    isVirtual: true,
+  };
+
+  const rawTransactions = transactions.filter(t =>
     isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
-  ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  );
+
+  // Add salary to transactions if it's within the current view month (which it always is by definition of payDate)
+  // But only if there isn't already a manual "Salary" entry on that day to avoid duplication if user manually added it?
+  // For now, let's just show it as "Scheduled".
+  const currentMonthTransactions = [...rawTransactions, salaryTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const income = currentMonthTransactions
     .filter(t => t.type === 'income')
@@ -104,16 +127,17 @@ export default function BudgetView() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {currentMonthTransactions.map(t => {
+            const isVirtual = (t as any).isVirtual;
             const tag = tags.find(tag => tag.id === t.tagId);
             return (
-              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
+              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', opacity: isVirtual ? 0.7 : 1, backgroundColor: isVirtual ? 'hsl(var(--background))' : 'transparent' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <div style={{
                     width: '10px', height: '10px', borderRadius: '50%',
-                    backgroundColor: tag?.color || '#ccc'
+                    backgroundColor: isVirtual ? 'gold' : (tag?.color || '#ccc')
                   }}></div>
                   <div>
-                    <div style={{ fontSize: '0.875rem' }}>{tag?.name || '不明'}</div>
+                    <div style={{ fontSize: '0.875rem' }}>{isVirtual ? '給与(予定)' : (tag?.name || '不明')}</div>
                     <div style={{ fontSize: '0.75rem', color: '#666' }}>{format(new Date(t.date), 'M/d')} {t.description}</div>
                   </div>
                 </div>
@@ -124,12 +148,14 @@ export default function BudgetView() {
                   }}>
                     {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
                   </div>
-                  <button
-                    onClick={() => deleteTransaction(t.id)}
-                    style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {!isVirtual && (
+                    <button
+                      onClick={() => deleteTransaction(t.id)}
+                      style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             );

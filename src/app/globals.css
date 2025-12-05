@@ -2,16 +2,16 @@
 
 :root {
   /* Modern Color Palette - HSL */
-  --primary: 210 100% 50%;
-  /* Blue */
+  --primary: 210 100% 45%;
+  /* Slightly darker Blue */
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 262 80% 50%;
-  /* Purple */
+  --secondary: 262 80% 45%;
+  /* Slightly darker Purple */
   --secondary-foreground: 0 0% 100%;
 
-  --accent: 34 100% 50%;
-  /* Orange */
+  --accent: 34 100% 45%;
+  /* Slightly darker Orange */
   --accent-foreground: 0 0% 100%;
 
   --background: 220 20% 97%;
@@ -22,13 +22,17 @@
   --card: 0 0% 100%;
   --card-foreground: 220 20% 10%;
 
-  --border: 220 15% 90%;
-  --input: 220 15% 90%;
-  --ring: 210 100% 50%;
+  --border: 220 15% 85%;
+  /* Darker border */
+  --input: 220 15% 85%;
+  --ring: 210 100% 45%;
 
-  --success: 142 70% 45%;
-  --danger: 0 84% 60%;
-  --warning: 38 92% 50%;
+  --success: 142 76% 36%;
+  /* Darker Green */
+  --danger: 0 72% 51%;
+  /* Darker Red */
+  --warning: 38 92% 45%;
+  /* Darker Yellow/Orange */
 
   /* Spacing */
   --radius: 0.5rem;

@@ -37,6 +37,7 @@ export interface UserConfig {
   hourlyWage: number;
   monthlyBudget: number;
   savingsGoal: number;
+  payDay: number; // Day of month (1-31)
 }
 
 export interface AppData {

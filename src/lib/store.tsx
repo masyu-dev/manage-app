@@ -26,6 +26,7 @@ const defaultAppData: AppData = {
     hourlyWage: 1000,
     monthlyBudget: 50000,
     savingsGoal: 100000,
+    payDay: 25,
   },
 };
 

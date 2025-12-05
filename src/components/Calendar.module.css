@@ -36,6 +36,8 @@
 .dayCell {
   background-color: hsl(var(--card));
   min-height: 100px;
+  aspect-ratio: 1 / 1;
+  /* Make cells square */
   padding: 0.5rem;
   position: relative;
   display: flex;
