@@ -116,4 +116,9 @@
   .monthTitle {
     font-size: 1.25rem;
   }
+
+  .calendarContainer {
+    padding: 0.5rem;
+    /* Reduce padding on mobile */
+  }
 }
