@@ -96,8 +96,13 @@
 
 @media (max-width: 768px) {
   .dayCell {
-    min-height: 80px;
-    padding: 0.25rem;
+    min-height: auto;
+    /* Allow height to shrink */
+    height: 80px;
+    /* Fixed height for consistency */
+    aspect-ratio: auto;
+    /* Remove aspect ratio constraint */
+    padding: 0.1rem;
   }
 
   .dateNumber {
