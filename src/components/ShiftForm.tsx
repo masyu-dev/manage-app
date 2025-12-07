@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import { Shift } from '@/types';
 import { X } from 'lucide-react';
+import { format } from 'date-fns';
 import styles from './ShiftForm.module.css';
 
 interface ShiftFormProps {
@@ -15,7 +16,7 @@ interface ShiftFormProps {
 export default function ShiftForm({ initialDate, existingShift, onClose }: ShiftFormProps) {
   const { addShift, updateShift, deleteShift, userConfig, shiftProfiles, addShiftProfile } = useApp();
 
-  const [date, setDate] = useState(initialDate ? initialDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState(existingShift?.startTime || '09:00');
   const [endTime, setEndTime] = useState(existingShift?.endTime || '17:00');
   const [breakTime, setBreakTime] = useState(existingShift?.breakTime || 60);

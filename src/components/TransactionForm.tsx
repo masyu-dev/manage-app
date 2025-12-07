@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '@/lib/store';
 import { Transaction, TransactionType } from '@/types';
 import { X } from 'lucide-react';
+import { format } from 'date-fns';
 import styles from './ShiftForm.module.css'; // Reusing modal styles
 
 interface TransactionFormProps {
@@ -14,7 +15,7 @@ interface TransactionFormProps {
 export default function TransactionForm({ initialDate, onClose }: TransactionFormProps) {
   const { addTransaction, tags } = useApp();
 
-  const [date, setDate] = useState(initialDate ? initialDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>('expense');
   const [tagId, setTagId] = useState('');
