@@ -7,15 +7,40 @@ import { Pie } from 'react-chartjs-2';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { calculateMonthlySalary } from '@/lib/calculations';
 import { ja } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import BudgetCalendar from './BudgetCalendar';
 
+const TAG_COLORS = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#1a535c', '#ff9f1c', '#2ec4b6', '#e71d36', '#d62828', '#003049', '#f77f00', '#fcbf49'];
 
 export default function BudgetView() {
-  const { transactions, tags, deleteTransaction, userConfig, shifts } = useApp();
+  const { transactions, tags, addTag, deleteTag, deleteTransaction, userConfig, shifts } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // Tag Form State
+  const [isTagFormOpen, setIsTagFormOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
+
+  const handleAddTag = () => {
+    if (newTagName) {
+      addTag({
+        id: crypto.randomUUID(),
+        name: newTagName,
+        color: newTagColor,
+        type: 'expense',
+      });
+      setNewTagName('');
+      setIsTagFormOpen(false);
+    }
+  };
+
+  const handleDeleteTag = (id: string) => {
+    if (confirm('このタグを削除しますか？')) {
+      deleteTag(id);
+    }
+  };
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -112,6 +137,54 @@ export default function BudgetView() {
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', color: '#999' }}>データがありません</div>
           )}
+        </div>
+      </div>
+
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3>タグ管理</h3>
+          <button onClick={() => setIsTagFormOpen(!isTagFormOpen)} className="btn btn-outline" style={{ padding: '0.25rem' }}>
+            <Plus size={16} />
+          </button>
+        </div>
+
+        {isTagFormOpen && (
+          <div style={{ padding: '1rem', backgroundColor: 'hsl(var(--background))', borderRadius: 'var(--radius)', marginBottom: '1rem', border: '1px solid hsl(var(--border))' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <input className="input" style={{ flex: 1 }} value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="タグ名 (例: 美容)" />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {TAG_COLORS.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setNewTagColor(c)}
+                    style={{
+                      width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c,
+                      border: newTagColor === c ? '2px solid black' : '2px solid transparent', cursor: 'pointer'
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button onClick={() => setIsTagFormOpen(false)} className="btn btn-outline" style={{ fontSize: '0.875rem' }}>キャンセル</button>
+              <button onClick={handleAddTag} className="btn btn-primary" style={{ fontSize: '0.875rem' }}>追加</button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          {tags.filter(t => t.type === 'expense').map(tag => (
+            <div key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.5rem', border: '1px solid hsl(var(--border))', borderRadius: '1rem', fontSize: '0.875rem' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: tag.color }}></div>
+              <span>{tag.name}</span>
+              {/* Only allow deleting custom tags? For now all expense tags */}
+              <button onClick={() => handleDeleteTag(tag.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 0, marginLeft: '4px' }}>
+                <X size={12} />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 

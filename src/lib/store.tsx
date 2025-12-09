@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AppData, Shift, ShiftProfile, Tag, Transaction, UserConfig } from '@/types';
+import { AppData, Shift, ShiftProfile, Tag, Job, Transaction, UserConfig } from '@/types';
 
 interface AppContextType extends AppData {
   addShift: (shift: Shift) => void;
@@ -11,6 +11,12 @@ interface AppContextType extends AppData {
   deleteTransaction: (id: string) => void;
   updateUserConfig: (config: Partial<UserConfig>) => void;
   addShiftProfile: (profile: ShiftProfile) => void;
+  addJob: (job: Job) => void;
+  updateJob: (job: Job) => void;
+  deleteJob: (id: string) => void;
+  addTag: (tag: Tag) => void;
+  updateTag: (tag: Tag) => void;
+  deleteTag: (id: string) => void;
 }
 
 const defaultAppData: AppData = {
@@ -21,12 +27,16 @@ const defaultAppData: AppData = {
     { id: '2', name: '交通費', color: '#4ecdc4', type: 'expense' },
     { id: '3', name: '給料', color: '#ffe66d', type: 'income' },
   ],
+  jobs: [],
   shiftProfiles: [],
   userConfig: {
     hourlyWage: 1000,
     monthlyBudget: 50000,
     savingsGoal: 100000,
     payDay: 25,
+    themeMode: 'light',
+    themeColor: 'blue',
+    nightWageMultiplier: 1.25,
   },
 };
 
@@ -40,7 +50,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('manage-app-data');
     if (saved) {
       try {
-        setData(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        // Migration: Ensure new fields exist
+        if (!parsed.jobs) parsed.jobs = [];
+        if (!parsed.userConfig.nightWageMultiplier) parsed.userConfig.nightWageMultiplier = 1.25;
+        // Ensure existing tags are preserved if any, otherwise use default
+        if (!parsed.tags || parsed.tags.length === 0) parsed.tags = defaultAppData.tags;
+
+        setData(parsed);
       } catch (e) {
         console.error('Failed to load data', e);
       }
@@ -53,6 +70,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('manage-app-data', JSON.stringify(data));
     }
   }, [data, loaded]);
+
+  // Apply theme
+  useEffect(() => {
+    if (loaded) {
+      document.documentElement.setAttribute('data-theme', data.userConfig.themeMode);
+      document.documentElement.setAttribute('data-color', data.userConfig.themeColor);
+    }
+  }, [data.userConfig.themeMode, data.userConfig.themeColor, loaded]);
 
   const addShift = (shift: Shift) => {
     setData(prev => ({ ...prev, shifts: [...prev.shifts, shift] }));
@@ -91,6 +116,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setData(prev => ({ ...prev, shiftProfiles: [...prev.shiftProfiles, profile] }));
   };
 
+  const addJob = (job: Job) => {
+    setData(prev => ({ ...prev, jobs: [...prev.jobs, job] }));
+  };
+
+  const updateJob = (updatedJob: Job) => {
+    setData(prev => ({
+      ...prev,
+      jobs: prev.jobs.map(j => j.id === updatedJob.id ? updatedJob : j)
+    }));
+  };
+
+  const deleteJob = (id: string) => {
+    setData(prev => ({
+      ...prev,
+      jobs: prev.jobs.filter(j => j.id !== id)
+    }));
+  };
+
+  const addTag = (tag: Tag) => {
+    setData(prev => ({ ...prev, tags: [...prev.tags, tag] }));
+  };
+
+  const updateTag = (updatedTag: Tag) => {
+    setData(prev => ({
+      ...prev,
+      tags: prev.tags.map(t => t.id === updatedTag.id ? updatedTag : t)
+    }));
+  };
+
+  const deleteTag = (id: string) => {
+    setData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t.id !== id)
+    }));
+  };
+
   if (!loaded) return null; // Or a loading spinner
 
   return (
@@ -103,6 +164,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteTransaction,
       updateUserConfig,
       addShiftProfile,
+      addJob,
+      updateJob,
+      deleteJob,
+      addTag,
+      updateTag,
+      deleteTag,
     }}>
       {children}
     </AppContext.Provider>

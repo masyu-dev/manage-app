@@ -7,6 +7,13 @@ export interface Tag {
   type: TransactionType;
 }
 
+export interface Job {
+  id: string;
+  name: string;
+  hourlyWage: number;
+  color: string;
+}
+
 export interface Transaction {
   id: string;
   date: string; // ISO date string YYYY-MM-DD
@@ -22,6 +29,7 @@ export interface ShiftProfile {
   startTime: string; // HH:mm
   endTime: string; // HH:mm
   breakTime: number; // minutes
+  jobId?: string;
 }
 
 export interface Shift {
@@ -31,19 +39,24 @@ export interface Shift {
   endTime: string; // HH:mm
   breakTime: number; // minutes
   hourlyWage: number; // Snapshot of wage at that time
+  jobId?: string;
 }
 
 export interface UserConfig {
-  hourlyWage: number;
+  hourlyWage: number; // Default fallback wage
   monthlyBudget: number;
   savingsGoal: number;
   payDay: number; // Day of month (1-31)
+  themeMode: 'light' | 'dark';
+  themeColor: string; // 'blue', 'purple', 'orange', etc.
+  nightWageMultiplier: number; // Default 1.25
 }
 
 export interface AppData {
   shifts: Shift[];
   transactions: Transaction[];
   tags: Tag[];
+  jobs: Job[];
   shiftProfiles: ShiftProfile[];
   userConfig: UserConfig;
 }

@@ -6,15 +6,8 @@ import { AppProvider } from "@/lib/store";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "マニージ - Shift & Budget Manager",
-  description: "Manage your shifts and budget in one place",
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  title: 'Manage App',
+  description: 'Shift management and budgeting app',
 };
 
 export default function RootLayout({
@@ -24,7 +17,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <body className={inter.className}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+      </head>
+      <body className={`${inter.className}`}>
         <AppProvider>
           {children}
         </AppProvider>

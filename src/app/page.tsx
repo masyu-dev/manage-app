@@ -3,15 +3,21 @@
 import React, { useState } from 'react';
 import Calendar from '@/components/Calendar';
 import Navigation from '@/components/Navigation';
+import Header from '@/components/Header';
+import SettingsModal from '@/components/SettingsModal';
+import SalaryView from '@/components/SalaryView';
+import BudgetView from '@/components/BudgetView';
+import SummaryView from '@/components/SummaryView';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('shift');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
     <main style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))', minHeight: '100vh' }}>
-      <div className="container">
-        <h1 style={{ margin: '1rem 0', fontSize: '1.5rem' }}>マニージ</h1>
+      <Header onOpenSettings={() => setIsSettingsOpen(true)} />
 
+      <div className="container">
         {activeTab === 'shift' && (
           <div>
             <Calendar />
@@ -31,9 +37,10 @@ export default function Home() {
         )}
       </div>
       <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {isSettingsOpen && (
+        <SettingsModal onClose={() => setIsSettingsOpen(false)} />
+      )}
     </main>
   );
 }
-import SalaryView from '@/components/SalaryView';
-import BudgetView from '@/components/BudgetView';
-import SummaryView from '@/components/SummaryView';

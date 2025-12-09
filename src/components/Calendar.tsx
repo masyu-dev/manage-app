@@ -9,7 +9,7 @@ import styles from './Calendar.module.css';
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const { shifts } = useApp();
+  const { shifts, jobs } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -80,15 +80,25 @@ export default function Calendar() {
             >
               <div className={styles.dateNumber}>{format(day, 'd')}</div>
               <div className={styles.shiftList}>
-                {dayShifts.map(shift => (
-                  <div
-                    key={shift.id}
-                    className={styles.shiftItem}
-                    onClick={(e) => handleShiftClick(e, shift)}
-                  >
-                    {shift.startTime}-{shift.endTime}
-                  </div>
-                ))}
+                {dayShifts.map(shift => {
+                  const job = jobs.find(j => j.id === shift.jobId);
+                  const backgroundColor = job ? job.color : 'hsl(217, 91%, 60%)'; // default blue
+                  // Check if color is light or dark for text contrast? 
+                  // For simplicity assume colors are somewhat dark/saturated and use white text, or just use provided palette.
+                  // The provided palette in SalaryView uses mostly bright colors (red, teal, yellow, etc).
+                  // Text color might need adjustment. Let's assume white text for colored backgrounds.
+                  return (
+                    <div
+                      key={shift.id}
+                      className={styles.shiftItem}
+                      style={{ backgroundColor, color: '#fff' }}
+                      onClick={(e) => handleShiftClick(e, shift)}
+                    >
+                      {job && <span style={{ fontSize: '0.6rem', marginRight: '2px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
+                      {shift.startTime}-{shift.endTime}
+                    </div>
+                  );
+                })}
               </div>
               {isCurrentMonth && (
                 <button className={styles.addButton}>

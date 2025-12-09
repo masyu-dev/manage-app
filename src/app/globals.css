@@ -36,17 +36,42 @@
   --radius: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+/* Dark Mode */
+[data-theme='dark'] {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
 
-    --card: 222 47% 13%;
-    --card-foreground: 210 40% 98%;
+  --card: 222 47% 13%;
+  --card-foreground: 210 40% 98%;
 
-    --border: 217 32% 17%;
-    --input: 217 32% 17%;
-  }
+  --border: 217 32% 17%;
+  --input: 217 32% 17%;
+}
+
+/* Theme Colors */
+[data-color='blue'] {
+  --primary: 210 100% 45%;
+  --ring: 210 100% 45%;
+}
+
+[data-color='purple'] {
+  --primary: 262 80% 45%;
+  --ring: 262 80% 45%;
+}
+
+[data-color='orange'] {
+  --primary: 34 100% 45%;
+  --ring: 34 100% 45%;
+}
+
+[data-color='green'] {
+  --primary: 142 76% 36%;
+  --ring: 142 76% 36%;
+}
+
+[data-color='red'] {
+  --primary: 0 72% 51%;
+  --ring: 0 72% 51%;
 }
 
 * {

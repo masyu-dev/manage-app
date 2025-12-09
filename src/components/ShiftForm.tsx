@@ -14,17 +14,40 @@ interface ShiftFormProps {
 }
 
 export default function ShiftForm({ initialDate, existingShift, onClose }: ShiftFormProps) {
-  const { addShift, updateShift, deleteShift, userConfig, shiftProfiles, addShiftProfile } = useApp();
+  const { addShift, updateShift, deleteShift, userConfig, shiftProfiles, addShiftProfile, jobs } = useApp();
 
   const [date, setDate] = useState(initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState(existingShift?.startTime || '09:00');
   const [endTime, setEndTime] = useState(existingShift?.endTime || '17:00');
   const [breakTime, setBreakTime] = useState(existingShift?.breakTime || 60);
+  const [jobId, setJobId] = useState(existingShift?.jobId || '');
   const [profileName, setProfileName] = useState('');
   const [showProfileSave, setShowProfileSave] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    let currentWage = userConfig.hourlyWage;
+    if (jobId) {
+      const job = jobs.find(j => j.id === jobId);
+      if (job) currentWage = job.hourlyWage;
+    }
+    // If editing and job hasn't changed, strictly speaking we should maybe keep the old wage? 
+    // But for simplicity, if job is selected, we use its CURRENT wage definition (or keep existing if not re-selected).
+    // Actually, good practice: if existingShift exists and jobId matches, keep existingShift.hourlyWage.
+    // If jobId changed, use new job's wage.
+    // Let's simplified: If existingShift, use its wage unless we decided to add a wage override UI.
+    // But user requirement says "hourly wage can be separate".
+    // If I change job from A to B, wage must update.
+    // If I just change time, wage should stay? 
+    // Let's recalculate wage on submit based on current job selection to ensure it's up to date with job settings.
+
+    // Better logic:
+    // If jobs exist, finding the wage from the selected job is safest for consistency.
+
+    if (existingShift && existingShift.jobId === jobId) {
+      currentWage = existingShift.hourlyWage;
+    }
 
     const shiftData: Shift = {
       id: existingShift?.id || crypto.randomUUID(),
@@ -32,7 +55,8 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
       startTime,
       endTime,
       breakTime,
-      hourlyWage: existingShift?.hourlyWage || userConfig.hourlyWage,
+      hourlyWage: currentWage,
+      jobId: jobId || undefined,
     };
 
     if (existingShift) {
@@ -43,6 +67,8 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
     onClose();
   };
 
+  // Update wage reference if job changes? No, wage is calculated on submit.
+
   const handleSaveProfile = () => {
     if (!profileName) return;
     addShiftProfile({
@@ -51,6 +77,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
       startTime,
       endTime,
       breakTime,
+      jobId: jobId || undefined,
     });
     setShowProfileSave(false);
     setProfileName('');
@@ -62,6 +89,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
       setStartTime(profile.startTime);
       setEndTime(profile.endTime);
       setBreakTime(profile.breakTime);
+      if (profile.jobId) setJobId(profile.jobId);
     }
   };
 
@@ -88,6 +116,22 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
                 <option value="" disabled>選択してください</option>
                 {shiftProfiles.map(p => (
                   <option key={p.id} value={p.id}>{p.name} ({p.startTime}-{p.endTime})</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {jobs.length > 0 && (
+            <div className={styles.formGroup}>
+              <label>バイト先</label>
+              <select
+                value={jobId}
+                onChange={(e) => setJobId(e.target.value)}
+                className="input"
+              >
+                <option value="">デフォルト (時給 ¥{userConfig.hourlyWage})</option>
+                {jobs.map(job => (
+                  <option key={job.id} value={job.id}>{job.name} (¥{job.hourlyWage})</option>
                 ))}
               </select>
             </div>
