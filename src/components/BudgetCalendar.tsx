@@ -65,12 +65,6 @@ export default function BudgetCalendar() {
         <button onClick={nextMonth} className="btn btn-outline"><ChevronRight size={20} /></button>
       </div>
 
-      <div className={styles.grid}>
-        {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-          <div key={day} className={styles.dayHeader}>{day}</div>
-        ))}
-      </div>
-
       <AnimatePresence initial={false} custom={direction} mode="wait">
         <motion.div
           key={page}
@@ -84,8 +78,10 @@ export default function BudgetCalendar() {
             opacity: { duration: 0.2 }
           }}
           className={styles.grid}
-          style={{ display: 'contents' }}
         >
+          {['日', '月', '火', '水', '木', '金', '土'].map(day => (
+            <div key={day} className={styles.dayHeader}>{day}</div>
+          ))}
           {calendarDays.map(day => {
             const dayTransactions = getTransactionsForDay(day);
             const isCurrentMonth = isSameMonth(day, monthStart);

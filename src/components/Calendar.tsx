@@ -89,12 +89,6 @@ export default function Calendar() {
         </div>
       </div>
 
-      <div className={styles.grid}>
-        {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-          <div key={day} className={styles.dayHeader}>{day}</div>
-        ))}
-      </div>
-
       <AnimatePresence initial={false} custom={direction} mode="wait">
         <motion.div
           key={page}
@@ -108,21 +102,11 @@ export default function Calendar() {
             opacity: { duration: 0.2 }
           }}
           className={styles.grid}
-          style={{ display: 'contents' }} // Preserve grid layout parent relationship if needed, or better wrap grid body?
-        // The original structure had header rows then calendar days inside .grid. 
-        // We moved header rows out to keep them static.
-        // Now we render days inside motion.div which should probably have grid styling or be inside the grid container?
-        // Actually, `styles.grid` container applies `display: grid`.
-        // If we wrap `calendarDays` in `motion.div`, `motion.div` becomes the grid child unless we make it `display: contents` (experimental) or `display: grid` itself.
-        // Let's make motion.div the grid container for the DAYS part.
         >
-          {/* We need to re-apply the grid columns to the motion div if it's the container of cells */}
-          {/* But `styles.grid` likely defines `grid-template-columns: repeat(7, 1fr)`. */}
-          {/* If so, we can apply `className={styles.grid}` to motion.div BUT we need to avoid nested grids misalignment. */}
-          {/* Let's try apply `display: grid; grid-template-columns: repeat(7, 1fr)` style manually or reuse class if suitable. */}
-          {/* Re-reading styles logic: `styles.grid` is the container. Header was inside. */}
-          {/* I moved Header OUT of the animated part. */}
-          {/* So motion.div will be a NEW container for the days. */}
+          {['日', '月', '火', '水', '木', '金', '土'].map(day => (
+            <div key={day} className={styles.dayHeader}>{day}</div>
+          ))}
+
           {calendarDays.map(day => {
             const dayShifts = getShiftsForDay(day);
             const isCurrentMonth = isSameMonth(day, monthStart);
