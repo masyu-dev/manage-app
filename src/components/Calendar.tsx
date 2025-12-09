@@ -6,9 +6,40 @@ import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
 import { ChevronLeft, ChevronRight, Plus, Share2 } from 'lucide-react';
 import styles from './Calendar.module.css';
+import ShiftForm from './ShiftForm';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 100 : -100,
+    opacity: 0,
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? 100 : -100,
+    opacity: 0,
+  }),
+};
+
+export default function Calendar() {
+  x: 0,
+    opacity: 1,
+    },
+exit: (direction: number) => ({
+  zIndex: 0,
+  x: direction < 0 ? 100 : -100,
+  opacity: 0,
+}),
+  };
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [[page, direction], setPage] = useState([0, 0]);
   const { shifts, jobs } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,8 +53,13 @@ export default function Calendar() {
 
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const paginate = (newDirection: number) => {
+    setPage([page + newDirection, newDirection]);
+    setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+  };
+
+  const nextMonth = () => paginate(1);
+  const prevMonth = () => paginate(-1);
 
   const getShiftsForDay = (date: Date) => {
     return shifts.filter(shift => isSameDay(new Date(shift.date), date));
@@ -67,48 +103,74 @@ export default function Calendar() {
         {['日', '月', '火', '水', '木', '金', '土'].map(day => (
           <div key={day} className={styles.dayHeader}>{day}</div>
         ))}
-
-        {calendarDays.map(day => {
-          const dayShifts = getShiftsForDay(day);
-          const isCurrentMonth = isSameMonth(day, monthStart);
-
-          return (
-            <div
-              key={day.toString()}
-              className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
-              onClick={() => handleDayClick(day)}
-            >
-              <div className={styles.dateNumber}>{format(day, 'd')}</div>
-              <div className={styles.shiftList}>
-                {dayShifts.map(shift => {
-                  const job = jobs.find(j => j.id === shift.jobId);
-                  const backgroundColor = job ? job.color : 'hsl(217, 91%, 60%)'; // default blue
-                  // Check if color is light or dark for text contrast? 
-                  // For simplicity assume colors are somewhat dark/saturated and use white text, or just use provided palette.
-                  // The provided palette in SalaryView uses mostly bright colors (red, teal, yellow, etc).
-                  // Text color might need adjustment. Let's assume white text for colored backgrounds.
-                  return (
-                    <div
-                      key={shift.id}
-                      className={styles.shiftItem}
-                      style={{ backgroundColor, color: '#fff' }}
-                      onClick={(e) => handleShiftClick(e, shift)}
-                    >
-                      {job && <span style={{ fontSize: '0.6rem', marginRight: '2px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
-                      {shift.startTime}-{shift.endTime}
-                    </div>
-                  );
-                })}
-              </div>
-              {isCurrentMonth && (
-                <button className={styles.addButton}>
-                  <Plus size={16} />
-                </button>
-              )}
-            </div>
-          );
-        })}
       </div>
+
+      <AnimatePresence initial={false} custom={direction} mode="wait">
+        <motion.div
+          key={page}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            x: { type: "spring", stiffness: 300, damping: 30 },
+            opacity: { duration: 0.2 }
+          }}
+          className={styles.grid}
+          style={{ display: 'contents' }} // Preserve grid layout parent relationship if needed, or better wrap grid body?
+        // The original structure had header rows then calendar days inside .grid. 
+        // We moved header rows out to keep them static.
+        // Now we render days inside motion.div which should probably have grid styling or be inside the grid container?
+        // Actually, `styles.grid` container applies `display: grid`.
+        // If we wrap `calendarDays` in `motion.div`, `motion.div` becomes the grid child unless we make it `display: contents` (experimental) or `display: grid` itself.
+        // Let's make motion.div the grid container for the DAYS part.
+        >
+          {/* We need to re-apply the grid columns to the motion div if it's the container of cells */}
+          {/* But `styles.grid` likely defines `grid-template-columns: repeat(7, 1fr)`. */}
+          {/* If so, we can apply `className={styles.grid}` to motion.div BUT we need to avoid nested grids misalignment. */}
+          {/* Let's try apply `display: grid; grid-template-columns: repeat(7, 1fr)` style manually or reuse class if suitable. */}
+          {/* Re-reading styles logic: `styles.grid` is the container. Header was inside. */}
+          {/* I moved Header OUT of the animated part. */}
+          {/* So motion.div will be a NEW container for the days. */}
+          {calendarDays.map(day => {
+            const dayShifts = getShiftsForDay(day);
+            const isCurrentMonth = isSameMonth(day, monthStart);
+
+            return (
+              <div
+                key={day.toString()}
+                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
+                onClick={() => handleDayClick(day)}
+              >
+                <div className={styles.dateNumber}>{format(day, 'd')}</div>
+                <div className={styles.shiftList}>
+                  {dayShifts.map(shift => {
+                    const job = jobs.find(j => j.id === shift.jobId);
+                    const backgroundColor = job ? job.color : 'hsl(217, 91%, 60%)';
+                    return (
+                      <div
+                        key={shift.id}
+                        className={styles.shiftItem}
+                        style={{ backgroundColor, color: '#fff' }}
+                        onClick={(e) => handleShiftClick(e, shift)}
+                      >
+                        {job && <span style={{ fontSize: '0.6rem', marginRight: '2px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
+                        {shift.startTime}-{shift.endTime}
+                      </div>
+                    );
+                  })}
+                </div>
+                {isCurrentMonth && (
+                  <button className={styles.addButton}>
+                    <Plus size={16} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </motion.div>
+      </AnimatePresence>
 
       {isModalOpen && (
         <ShiftForm

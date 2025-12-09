@@ -1,19 +1,34 @@
 'use client';
 
-'use client';
-
 import React, { useState } from 'react';
 import { useApp } from '@/lib/store';
 import { calculateMonthlySalary, calculateShiftSalary, calculateDuration } from '@/lib/calculations';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#FF9F1C', '#2EC4B6', '#E71D36'];
+
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 50 : -50,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 50 : -50,
+    opacity: 0,
+  }),
+};
 
 export default function SalaryView() {
   const { shifts, userConfig, updateUserConfig, jobs, addJob, deleteJob } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [[page, direction], setPage] = useState([0, 0]);
 
   // Job Management State
   const [newJobName, setNewJobName] = useState('');
@@ -35,8 +50,13 @@ export default function SalaryView() {
     return acc + calculateDuration(shift.startTime, shift.endTime, shift.breakTime);
   }, 0);
 
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const paginate = (newDirection: number) => {
+    setPage([page + newDirection, newDirection]);
+    setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+  };
+
+  const nextMonth = () => paginate(1);
+  const prevMonth = () => paginate(-1);
 
   const handleAddJob = () => {
     if (newJobName && newJobWage) {
@@ -61,23 +81,35 @@ export default function SalaryView() {
           <button onClick={nextMonth} className="btn btn-outline"><ChevronRight size={20} /></button>
         </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ fontSize: '0.875rem', color: '#666' }}>予想給与</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
-            ¥{monthlySalary.toLocaleString()}
-          </div>
-        </div>
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={page}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ opacity: { duration: 0.2 } }}
+          >
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.875rem', color: '#666' }}>予想給与</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+                ¥{monthlySalary.toLocaleString()}
+              </div>
+            </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.875rem' }}>
-          <div>
-            <div style={{ color: '#666' }}>勤務時間</div>
-            <div>{totalHours.toFixed(1)}時間</div>
-          </div>
-          <div>
-            <div style={{ color: '#666' }}>勤務日数</div>
-            <div>{currentMonthShifts.length}日</div>
-          </div>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'space-around', fontSize: '0.875rem' }}>
+              <div>
+                <div style={{ color: '#666' }}>勤務時間</div>
+                <div>{totalHours.toFixed(1)}時間</div>
+              </div>
+              <div>
+                <div style={{ color: '#666' }}>勤務日数</div>
+                <div>{currentMonthShifts.length}日</div>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <div className="card">
@@ -172,27 +204,38 @@ export default function SalaryView() {
 
       <div className="card">
         <h3>シフト詳細</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-          {currentMonthShifts.map(shift => {
-            const job = jobs.find(j => j.id === shift.jobId);
-            return (
-              <div key={shift.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
-                <div>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    {format(new Date(shift.date), 'M/d (E)', { locale: ja })}
-                    {job && <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: job.color, color: '#fff' }}>{job.name}</span>}
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={page}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ opacity: { duration: 0.2 } }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}
+          >
+            {currentMonthShifts.map(shift => {
+              const job = jobs.find(j => j.id === shift.jobId);
+              return (
+                <div key={shift.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                  <div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      {format(new Date(shift.date), 'M/d (E)', { locale: ja })}
+                      {job && <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: job.color, color: '#fff' }}>{job.name}</span>}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#666' }}>{shift.startTime} - {shift.endTime}</div>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#666' }}>{shift.startTime} - {shift.endTime}</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div>¥{calculateShiftSalary(shift, userConfig.nightWageMultiplier).toLocaleString()}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#666' }}>{calculateDuration(shift.startTime, shift.endTime, shift.breakTime).toFixed(1)}h</div>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div>¥{calculateShiftSalary(shift, userConfig.nightWageMultiplier).toLocaleString()}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#666' }}>{calculateDuration(shift.startTime, shift.endTime, shift.breakTime).toFixed(1)}h</div>
-                </div>
-              </div>
-            );
-          })}
-          {currentMonthShifts.length === 0 && <div style={{ textAlign: 'center', color: '#999', padding: '1rem' }}>シフトがありません</div>}
-        </div>
+              );
+            })}
+            {currentMonthShifts.length === 0 && <div style={{ textAlign: 'center', color: '#999', padding: '1rem' }}>シフトがありません</div>}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );

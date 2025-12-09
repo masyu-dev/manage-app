@@ -7,9 +7,28 @@ import { useApp } from '@/lib/store';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import styles from './Calendar.module.css'; // Reusing Calendar styles for consistency
 import TransactionForm from './TransactionForm';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 100 : -100,
+    opacity: 0,
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? 100 : -100,
+    opacity: 0,
+  }),
+};
 
 export default function BudgetCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [[page, direction], setPage] = useState([0, 0]);
   const { transactions } = useApp();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -21,8 +40,13 @@ export default function BudgetCalendar() {
 
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const paginate = (newDirection: number) => {
+    setPage([page + newDirection, newDirection]);
+    setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+  };
+
+  const nextMonth = () => paginate(1);
+  const prevMonth = () => paginate(-1);
 
   const getTransactionsForDay = (date: Date) => {
     return transactions.filter(t => isSameDay(new Date(t.date), date));
@@ -45,43 +69,60 @@ export default function BudgetCalendar() {
         {['日', '月', '火', '水', '木', '金', '土'].map(day => (
           <div key={day} className={styles.dayHeader}>{day}</div>
         ))}
+      </div>
 
-        {calendarDays.map(day => {
-          const dayTransactions = getTransactionsForDay(day);
-          const isCurrentMonth = isSameMonth(day, monthStart);
+      <AnimatePresence initial={false} custom={direction} mode="wait">
+        <motion.div
+          key={page}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            x: { type: "spring", stiffness: 300, damping: 30 },
+            opacity: { duration: 0.2 }
+          }}
+          className={styles.grid}
+          style={{ display: 'contents' }}
+        >
+          {calendarDays.map(day => {
+            const dayTransactions = getTransactionsForDay(day);
+            const isCurrentMonth = isSameMonth(day, monthStart);
 
-          const dailyIncome = dayTransactions
-            .filter(t => t.type === 'income')
-            .reduce((sum, t) => sum + t.amount, 0);
+            const dailyIncome = dayTransactions
+              .filter(t => t.type === 'income')
+              .reduce((sum, t) => sum + t.amount, 0);
 
-          const dailyExpense = dayTransactions
-            .filter(t => t.type === 'expense')
-            .reduce((sum, t) => sum + t.amount, 0);
+            const dailyExpense = dayTransactions
+              .filter(t => t.type === 'expense')
+              .reduce((sum, t) => sum + t.amount, 0);
 
-          return (
-            <div
-              key={day.toString()}
-              className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
-              onClick={() => handleDayClick(day)}
-            >
-              <div className={styles.dateNumber}>{format(day, 'd')}</div>
-              <div className={styles.shiftList}>
-                {dailyIncome > 0 && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--success)' }}>+{dailyIncome.toLocaleString()}</div>
-                )}
-                {dailyExpense > 0 && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>-{dailyExpense.toLocaleString()}</div>
+            return (
+              <div
+                key={day.toString()}
+                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
+                onClick={() => handleDayClick(day)}
+              >
+                <div className={styles.dateNumber}>{format(day, 'd')}</div>
+                <div className={styles.shiftList}>
+                  {dailyIncome > 0 && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--success)' }}>+{dailyIncome.toLocaleString()}</div>
+                  )}
+                  {dailyExpense > 0 && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--danger)' }}>-{dailyExpense.toLocaleString()}</div>
+                  )}
+                </div>
+                {isCurrentMonth && (
+                  <button className={styles.addButton}>
+                    <Plus size={16} />
+                  </button>
                 )}
               </div>
-              {isCurrentMonth && (
-                <button className={styles.addButton}>
-                  <Plus size={16} />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </motion.div>
+      </AnimatePresence>
 
       {isFormOpen && (
         <TransactionForm

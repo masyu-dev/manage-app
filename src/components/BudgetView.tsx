@@ -10,12 +10,29 @@ import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
 import TransactionForm from './TransactionForm';
 import BudgetCalendar from './BudgetCalendar';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const TAG_COLORS = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#1a535c', '#ff9f1c', '#2ec4b6', '#e71d36', '#d62828', '#003049', '#f77f00', '#fcbf49'];
+
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 50 : -50,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 50 : -50,
+    opacity: 0,
+  }),
+};
 
 export default function BudgetView() {
   const { transactions, tags, addTag, deleteTag, deleteTransaction, userConfig, shifts } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [[page, direction], setPage] = useState([0, 0]);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   // Tag Form State
@@ -102,8 +119,13 @@ export default function BudgetView() {
     ],
   };
 
-  const nextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
-  const prevMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
+  const paginate = (newDirection: number) => {
+    setPage([page + newDirection, newDirection]);
+    setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + (newDirection > 0 ? 1 : -1))));
+  };
+
+  const nextMonth = () => paginate(1);
+  const prevMonth = () => paginate(-1);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -114,30 +136,42 @@ export default function BudgetView() {
           <button onClick={nextMonth} className="btn btn-outline"><ChevronRight size={20} /></button>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '1rem', textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#666' }}>収入</div>
-            <div style={{ color: 'var(--success)', fontWeight: 'bold' }}>+¥{income.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#666' }}>支出</div>
-            <div style={{ color: 'var(--danger)', fontWeight: 'bold' }}>-¥{expense.toLocaleString()}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#666' }}>収支</div>
-            <div style={{ fontWeight: 'bold' }}>
-              {balance > 0 ? '+' : ''}¥{balance.toLocaleString()}
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={page}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ opacity: { duration: 0.2 } }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '1rem', textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#666' }}>収入</div>
+                <div style={{ color: 'var(--success)', fontWeight: 'bold' }}>+¥{income.toLocaleString()}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#666' }}>支出</div>
+                <div style={{ color: 'var(--danger)', fontWeight: 'bold' }}>-¥{expense.toLocaleString()}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#666' }}>収支</div>
+                <div style={{ fontWeight: 'bold' }}>
+                  {balance > 0 ? '+' : ''}¥{balance.toLocaleString()}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center' }}>
-          {expenseByTag.length > 0 ? (
-            <Pie data={chartData} options={{ maintainAspectRatio: false }} />
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', color: '#999' }}>データがありません</div>
-          )}
-        </div>
+            <div style={{ position: 'relative', height: '200px', display: 'flex', justifyContent: 'center' }}>
+              {expenseByTag.length > 0 ? (
+                <Pie data={chartData} options={{ maintainAspectRatio: false }} />
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', color: '#999' }}>データがありません</div>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <div className="card">
@@ -198,43 +232,54 @@ export default function BudgetView() {
           </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {currentMonthTransactions.map(t => {
-            const isVirtual = (t as any).isVirtual;
-            const tag = tags.find(tag => tag.id === t.tagId);
-            return (
-              <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', opacity: isVirtual ? 0.7 : 1, backgroundColor: isVirtual ? 'hsl(var(--background))' : 'transparent' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{
-                    width: '10px', height: '10px', borderRadius: '50%',
-                    backgroundColor: isVirtual ? 'gold' : (tag?.color || '#ccc')
-                  }}></div>
-                  <div>
-                    <div style={{ fontSize: '0.875rem' }}>{isVirtual ? '給与(予定)' : (tag?.name || '不明')}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#666' }}>{format(new Date(t.date), 'M/d')} {t.description}</div>
+        <AnimatePresence initial={false} custom={direction} mode="wait">
+          <motion.div
+            key={page}
+            custom={direction}
+            variants={variants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ opacity: { duration: 0.2 } }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
+          >
+            {currentMonthTransactions.map(t => {
+              const isVirtual = (t as any).isVirtual;
+              const tag = tags.find(tag => tag.id === t.tagId);
+              return (
+                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', opacity: isVirtual ? 0.7 : 1, backgroundColor: isVirtual ? 'hsl(var(--background))' : 'transparent' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{
+                      width: '10px', height: '10px', borderRadius: '50%',
+                      backgroundColor: isVirtual ? 'gold' : (tag?.color || '#ccc')
+                    }}></div>
+                    <div>
+                      <div style={{ fontSize: '0.875rem' }}>{isVirtual ? '給与(予定)' : (tag?.name || '不明')}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#666' }}>{format(new Date(t.date), 'M/d')} {t.description}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{
+                      fontWeight: 'bold',
+                      color: t.type === 'income' ? 'var(--success)' : 'var(--danger)'
+                    }}>
+                      {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
+                    </div>
+                    {!isVirtual && (
+                      <button
+                        onClick={() => deleteTransaction(t.id)}
+                        style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{
-                    fontWeight: 'bold',
-                    color: t.type === 'income' ? 'var(--success)' : 'var(--danger)'
-                  }}>
-                    {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
-                  </div>
-                  {!isVirtual && (
-                    <button
-                      onClick={() => deleteTransaction(t.id)}
-                      style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {currentMonthTransactions.length === 0 && <div style={{ textAlign: 'center', color: '#999', padding: '1rem' }}>履歴がありません</div>}
-        </div>
+              );
+            })}
+            {currentMonthTransactions.length === 0 && <div style={{ textAlign: 'center', color: '#999', padding: '1rem' }}>履歴がありません</div>}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {isFormOpen && <TransactionForm onClose={() => setIsFormOpen(false)} />}
