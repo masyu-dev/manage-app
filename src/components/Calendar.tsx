@@ -26,16 +26,6 @@ const variants = {
   }),
 };
 
-export default function Calendar() {
-  x: 0,
-    opacity: 1,
-    },
-exit: (direction: number) => ({
-  zIndex: 0,
-  x: direction < 0 ? 100 : -100,
-  opacity: 0,
-}),
-  };
 
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -182,4 +172,4 @@ export default function Calendar() {
     </div>
   );
 }
-import ShiftForm from './ShiftForm';
+
