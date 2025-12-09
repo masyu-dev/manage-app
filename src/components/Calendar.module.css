@@ -42,6 +42,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Prevent expanding beyond grid column */
+  overflow: hidden; /* Hide overflow content */
 }
 
 .disabled {
