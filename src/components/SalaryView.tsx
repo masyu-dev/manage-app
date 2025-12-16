@@ -36,6 +36,30 @@ export default function SalaryView() {
   const [newJobColor, setNewJobColor] = useState(COLORS[0]);
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
 
+  // Wage Input State (Local state to allow decimal input and clearing)
+  const [hourlyWageInput, setHourlyWageInput] = useState(userConfig.hourlyWage.toString());
+  const [nightWageInput, setNightWageInput] = useState(userConfig.nightWageMultiplier ? userConfig.nightWageMultiplier.toString() : '1.25');
+
+  // Sync from store only if vastly different (to respect local editing)
+  React.useEffect(() => {
+    if (Number(hourlyWageInput) !== userConfig.hourlyWage && hourlyWageInput !== '' && userConfig.hourlyWage !== 0) {
+      // Only sync if remote changed significantly and we aren't in standard editing flow? 
+      // Actually simplified logic: If store value is 0 but we have empty string, don't sync.
+      // If store value X matches Number(input), don't sync.
+      // If store value changes externally (e.g. initial load), sync.
+      setHourlyWageInput(userConfig.hourlyWage.toString());
+    }
+  }, [userConfig.hourlyWage]);
+
+  React.useEffect(() => {
+    // Similar logic for night wage
+    const currentNight = Number(nightWageInput);
+    const storeNight = userConfig.nightWageMultiplier;
+    if (currentNight !== storeNight && !(nightWageInput === '' && storeNight === 0)) {
+      setNightWageInput(storeNight ? storeNight.toString() : '');
+    }
+  }, [userConfig.nightWageMultiplier]);
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
@@ -123,8 +147,12 @@ export default function SalaryView() {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <input
                 type="number"
-                value={userConfig.hourlyWage}
-                onChange={(e) => updateUserConfig({ hourlyWage: Number(e.target.value) })}
+                value={hourlyWageInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setHourlyWageInput(val);
+                  updateUserConfig({ hourlyWage: val === '' ? 0 : Number(val) });
+                }}
                 className="input"
               />
               <span style={{ alignSelf: 'center' }}>円</span>
@@ -138,8 +166,12 @@ export default function SalaryView() {
               <input
                 type="number"
                 step="0.05"
-                value={userConfig.nightWageMultiplier || 1.25}
-                onChange={(e) => updateUserConfig({ nightWageMultiplier: Number(e.target.value) })}
+                value={nightWageInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNightWageInput(val);
+                  updateUserConfig({ nightWageMultiplier: val === '' ? 0 : Number(val) });
+                }}
                 className="input"
               />
               <span style={{ alignSelf: 'center' }}>倍</span>
