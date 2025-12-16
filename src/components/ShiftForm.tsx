@@ -13,7 +13,12 @@ interface ShiftFormProps {
   onClose: () => void;
 }
 
+import { createPortal } from 'react-dom';
+
+// ...
+
 export default function ShiftForm({ initialDate, existingShift, onClose }: ShiftFormProps) {
+  // ... (keep existing state and logic)
   const { addShift, updateShift, deleteShift, userConfig, shiftProfiles, addShiftProfile, jobs } = useApp();
 
   const [date, setDate] = useState(initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
@@ -23,6 +28,12 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
   const [jobId, setJobId] = useState(existingShift?.jobId || '');
   const [profileName, setProfileName] = useState('');
   const [showProfileSave, setShowProfileSave] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,18 +43,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
       const job = jobs.find(j => j.id === jobId);
       if (job) currentWage = job.hourlyWage;
     }
-    // If editing and job hasn't changed, strictly speaking we should maybe keep the old wage? 
-    // But for simplicity, if job is selected, we use its CURRENT wage definition (or keep existing if not re-selected).
-    // Actually, good practice: if existingShift exists and jobId matches, keep existingShift.hourlyWage.
-    // If jobId changed, use new job's wage.
-    // Let's simplified: If existingShift, use its wage unless we decided to add a wage override UI.
-    // But user requirement says "hourly wage can be separate".
-    // If I change job from A to B, wage must update.
-    // If I just change time, wage should stay? 
-    // Let's recalculate wage on submit based on current job selection to ensure it's up to date with job settings.
-
-    // Better logic:
-    // If jobs exist, finding the wage from the selected job is safest for consistency.
 
     if (existingShift && existingShift.jobId === jobId) {
       currentWage = existingShift.hourlyWage;
@@ -66,8 +65,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
     }
     onClose();
   };
-
-  // Update wage reference if job changes? No, wage is calculated on submit.
 
   const handleSaveProfile = () => {
     if (!profileName) return;
@@ -100,7 +97,9 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
       <div className={styles.modal}>
         <div className={styles.header}>
@@ -216,6 +215,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
