@@ -166,3 +166,16 @@ a {
     padding: 1rem;
   }
 }
+
+/* iOS devices only: prevent input zoom by forcing 16px font size */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 768px) {
+
+    input,
+    textarea,
+    select,
+    .input {
+      font-size: 16px;
+    }
+  }
+}
