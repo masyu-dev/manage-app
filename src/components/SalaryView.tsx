@@ -89,7 +89,10 @@ export default function SalaryView() {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ opacity: { duration: 0.2 } }}
+            transition={{
+              x: { type: "spring", stiffness: 600, damping: 40 },
+              opacity: { duration: 0.2 }
+            }}
           >
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontSize: '0.875rem', color: '#666' }}>予想給与</div>
@@ -212,7 +215,10 @@ export default function SalaryView() {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ opacity: { duration: 0.2 } }}
+            transition={{
+              x: { type: "spring", stiffness: 600, damping: 40 },
+              opacity: { duration: 0.2 }
+            }}
             style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}
           >
             {currentMonthShifts.map(shift => {

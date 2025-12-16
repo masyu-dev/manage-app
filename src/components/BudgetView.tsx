@@ -144,7 +144,10 @@ export default function BudgetView() {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ opacity: { duration: 0.2 } }}
+            transition={{
+              x: { type: "spring", stiffness: 600, damping: 40 },
+              opacity: { duration: 0.2 }
+            }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '1rem', textAlign: 'center' }}>
               <div>
@@ -240,7 +243,10 @@ export default function BudgetView() {
             initial="enter"
             animate="center"
             exit="exit"
-            transition={{ opacity: { duration: 0.2 } }}
+            transition={{
+              x: { type: "spring", stiffness: 600, damping: 40 },
+              opacity: { duration: 0.2 }
+            }}
             style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
           >
             {currentMonthTransactions.map(t => {
