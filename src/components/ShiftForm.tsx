@@ -101,7 +101,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
   };
 
   return (
-    <div className={styles.overlay}>
+    <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
       <div className={styles.modal}>
         <div className={styles.header}>
           <h3>{existingShift ? 'シフト編集' : 'シフト追加'}</h3>
