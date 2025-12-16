@@ -65,8 +65,8 @@ export default function Home() {
     <main style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))', minHeight: '100vh', overflowX: 'hidden' }}>
       <Header onOpenSettings={() => setIsSettingsOpen(true)} />
 
-      <div className="container" style={{ position: 'relative' }}>
-        <AnimatePresence initial={false} custom={direction} mode="wait">
+      <div className="container" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
+        <AnimatePresence initial={false} custom={direction}>
           <motion.div
             key={activeTab}
             custom={direction}
@@ -90,7 +90,7 @@ export default function Home() {
                 paginate(-1);
               }
             }}
-            style={{ width: '100%' }}
+            style={{ width: '100%', gridArea: '1 / 1' }}
           >
             {activeTab === 'shift' && <Calendar />}
             {activeTab === 'salary' && <SalaryView />}
