@@ -33,6 +33,7 @@ export default function BudgetCalendar() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
+  const today = new Date(); //今日の日付を取得
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart);
@@ -86,6 +87,7 @@ export default function BudgetCalendar() {
             const dayTransactions = getTransactionsForDay(day);
             const isCurrentMonth = isSameMonth(day, monthStart);
 
+            const isToday = isSameDay(day, today); //今日かどうかを判定
             const dailyIncome = dayTransactions
               .filter(t => t.type === 'income')
               .reduce((sum, t) => sum + t.amount, 0);
@@ -97,7 +99,7 @@ export default function BudgetCalendar() {
             return (
               <div
                 key={day.toString()}
-                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
+                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`} //isTodayがtrueの場合にstyles.todayクラスを追加
                 onClick={() => handleDayClick(day)}
               >
                 <div className={styles.dateNumber}>{format(day, 'd')}</div>
