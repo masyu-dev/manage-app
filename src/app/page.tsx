@@ -8,6 +8,7 @@ import SettingsModal from '@/components/SettingsModal';
 import SalaryView from '@/components/SalaryView';
 import BudgetView from '@/components/BudgetView';
 import SummaryView from '@/components/SummaryView';
+import HelpModal from '@/components/HelpModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const tabs = ['shift', 'salary', 'budget', 'summary'];
@@ -41,6 +42,7 @@ const swipePower = (offset: number, velocity: number) => {
 export default function Home() {
   const [activeTab, setActiveTab] = useState('shift');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [[page, direction], setPage] = useState([0, 0]);
 
   // Keep activeTab and page synced. activeTab is the source of truth for index.
@@ -63,7 +65,10 @@ export default function Home() {
 
   return (
     <main style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))', minHeight: '100vh', overflowX: 'hidden' }}>
-      <Header onOpenSettings={() => setIsSettingsOpen(true)} />
+      <Header
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
 
       <div className="container" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)' }}>
         <AnimatePresence initial={false} custom={direction}>
@@ -104,6 +109,12 @@ export default function Home() {
       {isSettingsOpen && (
         <SettingsModal onClose={() => setIsSettingsOpen(false)} />
       )}
+
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        activeTab={activeTab}
+      />
     </main>
   );
 }
