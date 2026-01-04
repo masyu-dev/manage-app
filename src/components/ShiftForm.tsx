@@ -103,11 +103,12 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
     <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
       <div className={styles.modal}>
         <div className={styles.header}>
+          <button type="button" onClick={onClose} className="btn btn-ghost" style={{ padding: 0 }}>キャンセル</button>
           <h3>{existingShift ? 'シフト編集' : 'シフト追加'}</h3>
-          <button onClick={onClose} className={styles.closeButton}><X size={20} /></button>
+          <button type="submit" form="shift-form" className="btn btn-ghost" style={{ padding: 0, color: 'var(--primary)', fontWeight: 'bold' }}>保存</button>
         </div>
 
-        <form onSubmit={handleSubmit} className={styles.form}>
+        <form id="shift-form" onSubmit={handleSubmit} className={styles.form}>
           {shiftProfiles.length > 0 && (
             <div className={styles.formGroup}>
               <label>履歴から入力</label>
@@ -199,19 +200,15 @@ export default function ShiftForm({ initialDate, existingShift, onClose }: Shift
             </div>
           )}
 
-          <div className={styles.actions}>
+          <div className={styles.actions} style={{ flexDirection: 'column', gap: '1rem' }}>
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', fontWeight: 'bold' }}>
+              保存
+            </button>
             {existingShift && (
-              <button type="button" onClick={handleDelete} className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>
+              <button type="button" onClick={handleDelete} className="btn btn-outline" style={{ width: '100%', color: 'var(--danger)', borderColor: 'var(--danger)', padding: '0.9rem' }}>
                 削除
               </button>
             )}
-            <div style={{ flex: 1 }}></div>
-            <button type="button" onClick={onClose} className="btn btn-outline" style={{ marginRight: '0.5rem' }}>
-              キャンセル
-            </button>
-            <button type="submit" className="btn btn-primary">
-              保存
-            </button>
           </div>
         </form>
       </div>

@@ -111,13 +111,16 @@ export default function Calendar() {
             const dayShifts = getShiftsForDay(day);
             const isCurrentMonth = isSameMonth(day, monthStart);
 
+            const isSaturday = day.getDay() === 6;
+            const isSunday = day.getDay() === 0;
+
             return (
               <div
                 key={day.toString()}
                 className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
                 onClick={() => handleDayClick(day)}
               >
-                <div className={styles.dateNumber}>{format(day, 'd')}</div>
+                <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
                 <div className={styles.shiftList}>
                   {dayShifts.map(shift => {
                     const job = jobs.find(j => j.id === shift.jobId);

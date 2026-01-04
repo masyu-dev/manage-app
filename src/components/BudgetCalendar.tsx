@@ -94,13 +94,16 @@ export default function BudgetCalendar() {
               .filter(t => t.type === 'expense')
               .reduce((sum, t) => sum + t.amount, 0);
 
+            const isSaturday = day.getDay() === 6;
+            const isSunday = day.getDay() === 0;
+
             return (
               <div
                 key={day.toString()}
                 className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
                 onClick={() => handleDayClick(day)}
               >
-                <div className={styles.dateNumber}>{format(day, 'd')}</div>
+                <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
                 <div className={styles.shiftList}>
                   {dailyIncome > 0 && (
                     <div style={{ fontSize: '0.75rem', color: 'var(--success)' }}>+{dailyIncome.toLocaleString()}</div>
