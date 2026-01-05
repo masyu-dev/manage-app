@@ -126,6 +126,14 @@
 
   .calendarContainer {
     padding: 0.5rem;
-    /* Reduce padding on mobile */
+  /* Reduce padding on mobile */
   }
+}
+
+.saturday {
+  color: #3b82f6;
+}
+
+.sunday {
+  color: #ef4444;
 }
