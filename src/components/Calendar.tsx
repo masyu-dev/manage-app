@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // useEffectを追加
+import { createPortal } from 'react-dom'; // createPortalを追加
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
@@ -8,6 +9,33 @@ import { ChevronLeft, ChevronRight, Plus, Share2 } from 'lucide-react';
 import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
 import { motion, AnimatePresence } from 'framer-motion';
+
+// トーストコンポーネント（親側で定義）
+const Toast = ({ message, onClose }: { message: string; onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000); // 3秒後に消える
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  // 画面の右下に表示
+  return createPortal(
+    <div style={{
+      position: 'fixed',
+      bottom: '24px',
+      right: '24px',
+      backgroundColor: '#333',
+      color: '#fff',
+      padding: '12px 24px',
+      borderRadius: '8px',
+      zIndex: 9999,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      animation: 'fadeIn 0.3s ease-out'
+    }}>
+      {message}
+    </div>,
+    document.body
+  );
+};
 
 const variants = {
   enter: (direction: number) => ({
@@ -26,7 +54,6 @@ const variants = {
   }),
 };
 
-
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
@@ -35,6 +62,9 @@ export default function Calendar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
+  
+  // トースト表示用のstateを追加
+  const [showToast, setShowToast] = useState(false);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -81,6 +111,7 @@ export default function Calendar() {
               .map(s => `${format(new Date(s.date), 'M/d(E)', { locale: ja })} ${s.startTime}-${s.endTime}`)
               .join('\n');
             navigator.clipboard.writeText(text);
+            // ここも統一感のためにトーストにしても良いですが、一旦alertのまま
             alert('シフトをコピーしました！');
           }} className="btn btn-outline" title="シフトをコピー">
             <Share2 size={20} />
@@ -129,10 +160,22 @@ export default function Calendar() {
                       <div
                         key={shift.id}
                         className={styles.shiftItem}
-                        style={{ backgroundColor, color: '#fff' }}
+                        style={{
+                          backgroundColor,
+                          color: '#fff',
+                          // バッジUIのスタイル（前回の修正を維持）
+                          borderRadius: '12px',
+                          padding: '2px 8px',
+                          fontSize: '0.75rem',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                          fontWeight: 'bold',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          marginBottom: '2px'
+                        }}
                         onClick={(e) => handleShiftClick(e, shift)}
                       >
-                        {job && <span style={{ fontSize: '0.6rem', marginRight: '2px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
+                        {job && <span style={{ marginRight: '4px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
                         {shift.startTime}-{shift.endTime}
                       </div>
                     );
@@ -149,14 +192,18 @@ export default function Calendar() {
         </motion.div>
       </AnimatePresence>
 
+      {/* ShiftFormに onSave プロップスを渡す */}
       {isModalOpen && (
         <ShiftForm
           initialDate={selectedDate}
           existingShift={selectedShift}
           onClose={() => setIsModalOpen(false)}
+          onSave={() => setShowToast(true)} // 追加：保存されたらトーストを表示
         />
       )}
+
+      {/* トースト表示 */}
+      {showToast && <Toast message="シフトを保存しました！" onClose={() => setShowToast(false)} />}
     </div>
   );
 }
-
