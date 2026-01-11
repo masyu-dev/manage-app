@@ -42,8 +42,10 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Prevent expanding beyond grid column */
-  overflow: hidden; /* Hide overflow content */
+  min-width: 0;
+  /* Prevent expanding beyond grid column */
+  overflow: hidden;
+  /* Hide overflow content */
 }
 
 .disabled {
@@ -126,7 +128,7 @@
 
   .calendarContainer {
     padding: 0.5rem;
-  /* Reduce padding on mobile */
+    /* Reduce padding on mobile */
   }
 }
 
@@ -136,4 +138,24 @@
 
 .sunday {
   color: #ef4444;
+}
+
+.today .dateNumber {
+  background-color: hsl(var(--primary));
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .today .dateNumber {
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+  }
 }
