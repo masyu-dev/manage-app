@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import { calculateMonthlySalary, calculateShiftSalary, calculateDuration } from '@/lib/calculations';
 import { format, subMonths, addMonths } from 'date-fns';
@@ -36,23 +36,21 @@ export default function SalaryView() {
   const [newJobColor, setNewJobColor] = useState(COLORS[0]);
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
 
-  // Wage Input State (Local state to allow decimal input and clearing)
+  // Wage Input State
   const [hourlyWageInput, setHourlyWageInput] = useState(userConfig.hourlyWage.toString());
   const [nightWageInput, setNightWageInput] = useState(userConfig.nightWageMultiplier ? userConfig.nightWageMultiplier.toString() : '1.25');
+  
+  // 新機能: 深夜手当の入力モード ('multiplier' = 倍率, 'amount' = 金額)
+  const [nightWageMode, setNightWageMode] = useState<'multiplier' | 'amount'>('multiplier');
 
-  // Sync from store only if vastly different (to respect local editing)
-  React.useEffect(() => {
+  // Sync from store
+  useEffect(() => {
     if (Number(hourlyWageInput) !== userConfig.hourlyWage && hourlyWageInput !== '' && userConfig.hourlyWage !== 0) {
-      // Only sync if remote changed significantly and we aren't in standard editing flow? 
-      // Actually simplified logic: If store value is 0 but we have empty string, don't sync.
-      // If store value X matches Number(input), don't sync.
-      // If store value changes externally (e.g. initial load), sync.
       setHourlyWageInput(userConfig.hourlyWage.toString());
     }
   }, [userConfig.hourlyWage]);
 
-  React.useEffect(() => {
-    // Similar logic for night wage
+  useEffect(() => {
     const currentNight = Number(nightWageInput);
     const storeNight = userConfig.nightWageMultiplier;
     if (currentNight !== storeNight && !(nightWageInput === '' && storeNight === 0)) {
@@ -95,6 +93,23 @@ export default function SalaryView() {
       setIsJobFormOpen(false);
     }
   };
+
+  // 深夜手当: 金額入力時のハンドラ
+  const handleNightAmountChange = (amountStr: string) => {
+    const amount = Number(amountStr);
+    const baseWage = Number(hourlyWageInput);
+    
+    if (baseWage > 0 && amount > 0) {
+      const calculatedMultiplier = amount / baseWage;
+      setNightWageInput(calculatedMultiplier.toString());
+      updateUserConfig({ nightWageMultiplier: calculatedMultiplier });
+    } else if (amountStr === '') {
+       updateUserConfig({ nightWageMultiplier: 0 });
+    }
+  };
+
+  // 表示用の深夜時給金額を計算
+  const currentNightAmount = Math.round(Number(hourlyWageInput) * Number(nightWageInput));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -142,6 +157,7 @@ export default function SalaryView() {
       <div className="card">
         <h3>基本設定</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+          {/* 基本時給 */}
           <div>
             <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>基本時給</div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -154,27 +170,106 @@ export default function SalaryView() {
                   updateUserConfig({ hourlyWage: val === '' ? 0 : Number(val) });
                 }}
                 className="input"
+                placeholder="1000"
               />
-              <span style={{ alignSelf: 'center' }}>円</span>
+              <span style={{ alignSelf: 'center', minWidth: '2em' }}>円</span>
             </div>
           </div>
+
+          {/* 深夜手当設定 */}
           <div>
-            <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>
-              深夜手当倍率 (22:00以降)
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.875rem', color: '#666' }}>
+                深夜手当 (22:00以降)
+              </div>
+              
+              {/* スイッチUI */}
+              <div style={{ 
+                display: 'flex', 
+                position: 'relative',
+                backgroundColor: '#f3f4f6', 
+                padding: '4px', 
+                borderRadius: '9999px', 
+                border: '1px solid #e5e7eb'
+              }}>
+                {[
+                  { id: 'multiplier', label: '倍率' },
+                  { id: 'amount', label: '金額' }
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setNightWageMode(mode.id as 'multiplier' | 'amount')}
+                    style={{
+                      position: 'relative',
+                      zIndex: 1,
+                      padding: '4px 12px',
+                      fontSize: '0.75rem',
+                      fontWeight: nightWageMode === mode.id ? '600' : '400',
+                      color: nightWageMode === mode.id ? '#000' : '#666',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      transition: 'color 0.2s',
+                      minWidth: '60px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {mode.label}
+                    {nightWageMode === mode.id && (
+                      <motion.div
+                        layoutId="active-switch-bg"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          backgroundColor: '#ffffff',
+                          borderRadius: '9999px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                          zIndex: -1
+                        }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
+
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="number"
-                step="0.05"
-                value={nightWageInput}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setNightWageInput(val);
-                  updateUserConfig({ nightWageMultiplier: val === '' ? 0 : Number(val) });
-                }}
-                className="input"
-              />
-              <span style={{ alignSelf: 'center' }}>倍</span>
+              {nightWageMode === 'multiplier' ? (
+                <>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={nightWageInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNightWageInput(val);
+                      updateUserConfig({ nightWageMultiplier: val === '' ? 0 : Number(val) });
+                    }}
+                    className="input"
+                    placeholder="1.25"
+                  />
+                  <span style={{ alignSelf: 'center', minWidth: '2em' }}>倍</span>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    value={currentNightAmount || ''}
+                    onChange={(e) => handleNightAmountChange(e.target.value)}
+                    className="input"
+                    placeholder="1250"
+                  />
+                  <span style={{ alignSelf: 'center', minWidth: '2em' }}>円</span>
+                </>
+              )}
+            </div>
+            {/* 補助テキスト */}
+            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem', textAlign: 'right' }}>
+              {nightWageMode === 'multiplier' 
+                ? `(時給換算: ¥${currentNightAmount.toLocaleString()})`
+                : `(倍率換算: ${Number(nightWageInput).toFixed(2)}倍)`
+              }
             </div>
           </div>
         </div>
