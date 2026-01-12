@@ -47,6 +47,12 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
               >
                 <Moon size={20} /> ダーク
               </button>
+              <button
+                className={`${styles.modeButton} ${userConfig.themeMode === 'dark-gray' ? styles.active : ''}`}
+                onClick={() => updateUserConfig({ themeMode: 'dark-gray' })}
+              >
+                <Moon size={20} /> グレー
+              </button>
             </div>
           </div>
 

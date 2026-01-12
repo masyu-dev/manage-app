@@ -12,6 +12,18 @@
   margin-bottom: 1rem;
 }
 
+/* Force white buttons in dark modes */
+:global([data-theme='dark']) .header button,
+:global([data-theme='dark-gray']) .header button {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+:global([data-theme='dark']) .header button:hover,
+:global([data-theme='dark-gray']) .header button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .monthTitle {
   font-size: 1.5rem;
   font-weight: bold;
@@ -42,8 +54,10 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Prevent expanding beyond grid column */
-  overflow: hidden; /* Hide overflow content */
+  min-width: 0;
+  /* Prevent expanding beyond grid column */
+  overflow: hidden;
+  /* Hide overflow content */
 }
 
 .disabled {
@@ -97,8 +111,10 @@
 }
 
 .today .dateNumber {
-  background-color: hsl(var(--primary)); /* 数字の背景をメインカラーに */
-  color: white; /* 文字を白に */
+  background-color: hsl(var(--primary));
+  /* 数字の背景をメインカラーに */
+  color: white;
+  /* 文字を白に */
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -144,7 +160,7 @@
 
   .calendarContainer {
     padding: 0.5rem;
-  /* Reduce padding on mobile */
+    /* Reduce padding on mobile */
   }
 }
 

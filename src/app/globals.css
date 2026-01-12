@@ -44,8 +44,21 @@
   --card: 222 47% 13%;
   --card-foreground: 210 40% 98%;
 
-  --border: 217 32% 17%;
+  /* Lighter border for better visibility of grid lines */
+  --border: 217 32% 25%;
   --input: 217 32% 17%;
+}
+
+/* Dark Mode (Gray Base) */
+[data-theme='dark-gray'] {
+  --background: 0 0% 12%;
+  --foreground: 0 0% 98%;
+
+  --card: 0 0% 15%;
+  --card-foreground: 0 0% 98%;
+
+  --border: 0 0% 30%;
+  --input: 0 0% 20%;
 }
 
 /* Theme Colors */
