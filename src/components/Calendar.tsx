@@ -1,8 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react'; // useEffectを追加
-import { createPortal } from 'react-dom'; // createPortalを追加
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  eachDayOfInterval, 
+  startOfWeek, 
+  endOfWeek, 
+  isSameMonth, 
+  isSameDay, 
+  addMonths, 
+  subMonths, 
+  setMonth, 
+  setYear, 
+  getYear, 
+  getMonth 
+} from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
 import { ChevronLeft, ChevronRight, Plus, Share2 } from 'lucide-react';
@@ -10,14 +25,13 @@ import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// トーストコンポーネント（親側で定義）
+// トーストコンポーネント
 const Toast = ({ message, onClose }: { message: string; onClose: () => void }) => {
   useEffect(() => {
-    const timer = setTimeout(onClose, 3000); // 3秒後に消える
+    const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  // 画面の右下に表示
   return createPortal(
     <div style={{
       position: 'fixed',
@@ -63,8 +77,11 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
   
-  // トースト表示用のstateを追加
+  const today = new Date();
+
+  // トースト表示用のstate
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -80,6 +97,22 @@ export default function Calendar() {
 
   const nextMonth = () => paginate(1);
   const prevMonth = () => paginate(-1);
+
+  // 年月選択用のハンドラ
+  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newYear = parseInt(e.target.value, 10);
+    setCurrentDate(setYear(currentDate, newYear));
+  };
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newMonth = parseInt(e.target.value, 10);
+    setCurrentDate(setMonth(currentDate, newMonth));
+  };
+
+  const currentYear = getYear(currentDate);
+  const currentMonth = getMonth(currentDate);
+  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i); // +/- 5 years
+  const months = Array.from({ length: 12 }, (_, i) => i);
 
   const getShiftsForDay = (date: Date) => {
     return shifts.filter(shift => isSameDay(new Date(shift.date), date));
@@ -98,11 +131,41 @@ export default function Calendar() {
     setIsModalOpen(true);
   };
 
+  // トースト表示用の関数
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+  };
+
   return (
     <div className={styles.calendarContainer}>
       <div className={styles.header}>
         <button onClick={prevMonth} className="btn btn-outline"><ChevronLeft size={20} /></button>
-        <h2 className={styles.monthTitle}>{format(currentDate, 'yyyy年 M月', { locale: ja })}</h2>
+
+        {/* 年月選択ドロップダウン */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <select
+            value={currentYear}
+            onChange={handleYearChange}
+            className={styles.monthTitle}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', outline: 'none' }}
+          >
+            {years.map(year => (
+              <option key={year} value={year}>{year}年</option>
+            ))}
+          </select>
+          <select
+            value={currentMonth}
+            onChange={handleMonthChange}
+            className={styles.monthTitle}
+            style={{ border: 'none', background: 'transparent', cursor: 'pointer', outline: 'none' }}
+          >
+            {months.map(month => (
+              <option key={month} value={month}>{month + 1}月</option>
+            ))}
+          </select>
+        </div>
+
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={() => {
             const text = shifts
@@ -111,8 +174,7 @@ export default function Calendar() {
               .map(s => `${format(new Date(s.date), 'M/d(E)', { locale: ja })} ${s.startTime}-${s.endTime}`)
               .join('\n');
             navigator.clipboard.writeText(text);
-            // ここも統一感のためにトーストにしても良いですが、一旦alertのまま
-            alert('シフトをコピーしました！');
+            triggerToast('シフトをコピーしました！');
           }} className="btn btn-outline" title="シフトをコピー">
             <Share2 size={20} />
           </button>
@@ -141,14 +203,14 @@ export default function Calendar() {
           {calendarDays.map(day => {
             const dayShifts = getShiftsForDay(day);
             const isCurrentMonth = isSameMonth(day, monthStart);
-
             const isSaturday = day.getDay() === 6;
             const isSunday = day.getDay() === 0;
+            const isToday = isSameDay(day, today);
 
             return (
               <div
                 key={day.toString()}
-                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''}`}
+                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`}
                 onClick={() => handleDayClick(day)}
               >
                 <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
@@ -163,7 +225,6 @@ export default function Calendar() {
                         style={{
                           backgroundColor,
                           color: '#fff',
-                          // バッジUIのスタイル（前回の修正を維持）
                           borderRadius: '12px',
                           padding: '2px 8px',
                           fontSize: '0.75rem',
@@ -192,18 +253,20 @@ export default function Calendar() {
         </motion.div>
       </AnimatePresence>
 
-      {/* ShiftFormに onSave プロップスを渡す */}
+      {/* ShiftFormにトースト関連のPropsを渡す */}
       {isModalOpen && (
         <ShiftForm
           initialDate={selectedDate}
           existingShift={selectedShift}
           onClose={() => setIsModalOpen(false)}
-          onSave={() => setShowToast(true)} // 追加：保存されたらトーストを表示
+          onSave={() => triggerToast('シフトを保存しました！')}
+          onDelete={() => triggerToast('シフトを削除しました。')}
+          onToast={triggerToast}
         />
       )}
 
       {/* トースト表示 */}
-      {showToast && <Toast message="シフトを保存しました！" onClose={() => setShowToast(false)} />}
+      {showToast && <Toast message={toastMessage} onClose={() => setShowToast(false)} />}
     </div>
   );
 }
