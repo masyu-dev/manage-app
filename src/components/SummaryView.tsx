@@ -40,11 +40,45 @@ export default function SummaryView() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const balance = totalIncome - totalExpense;
-  const savingsRate = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
+  const monthlySavings = Math.max(0, balance);
+  //累積貯金(全期間)
+  //全期間の収入
+  const totalIncomeAllTime = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+  //全期間の支出
+  const totalExpenseAllTime = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+  //累計貯金額
+  const totalSavings = Math.max(
+    0,
+    totalIncomeAllTime - totalExpenseAllTime
+  );
+
+  //最終目標に対する達成率
+  const savingsProgress =
+    userConfig.savingsGoal > 0
+      ? Math.min((totalSavings / userConfig.savingsGoal) * 100, 100)
+      : 0;
+
+  const savingsColor =
+  savingsProgress >= 100
+    ? 'var(--success)'
+    : savingsProgress >= 50
+    ? 'var(--primary)'
+    : 'var(--warning)';
+
 
   // Budget Progress
   const budgetProgress = Math.min((totalExpense / userConfig.monthlyBudget) * 100, 100);
-  const budgetColor = budgetProgress > 90 ? 'var(--danger)' : budgetProgress > 75 ? 'var(--warning)' : 'var(--success)';
+  const budgetColor =
+  budgetProgress > 90
+    ? 'hsl(var(--danger))'
+    : budgetProgress > 75
+    ? 'hsl(var(--warning))'
+    : 'hsl(var(--success))';
+
 
   const nextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
   const prevMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
@@ -102,7 +136,7 @@ return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <h3>予算管理</h3>
-        <button className="btn btn-outline" onClick={() => setIsSettingsOpen(true)}>
+        <button className="btn btn-outline" onClick={() => setIsSettingsOpen(prev => !prev)}>
           <Settings size={16} />
         </button>
       </div>
@@ -136,13 +170,53 @@ return (
             残り: ¥{Math.max(0, userConfig.monthlyBudget - totalExpense).toLocaleString()}
           </div>
 
-          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem' }}>
-            貯金目標達成率（今月の貯金: ¥{Math.max(0, balance).toLocaleString()}）
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '0.875rem',
+              marginBottom: '0.25rem',
+            }}
+          >
+            <span>
+              貯金目標達成率
+            </span>
+            <span>{Math.round(savingsProgress)}%</span>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#666' }}>
-            目標: ¥{userConfig.savingsGoal.toLocaleString()}
+
+
+            <div
+              style={{
+                height: '10px',
+                backgroundColor: 'hsl(var(--background))',
+                borderRadius: '5px',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${savingsProgress}%`,
+                  height: '100%',
+                  backgroundColor: `hsl(${savingsColor})`,
+                  transition: 'width 0.5s',
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                fontSize: '0.75rem',
+                color: '#666',
+                marginTop: '0.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+              }}
+            >
+              <span>今月の貯金 ¥{monthlySavings.toLocaleString()}</span>
+              <span>目標: ¥{userConfig.savingsGoal.toLocaleString()}</span>
+            </div>
           </div>
-        </div>
       )}
 
       {isSettingsOpen && (
