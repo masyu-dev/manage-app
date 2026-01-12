@@ -80,8 +80,8 @@ export default function BudgetCalendar() {
           }}
           className={styles.grid}
         >
-          {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-            <div key={day} className={styles.dayHeader}>{day}</div>
+          {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => (
+            <div key={day} className={`${styles.dayHeader} ${index === 0 ? styles.sunday : index === 6 ? styles.saturday : ''}`}>{day}</div>
           ))}
           {calendarDays.map(day => {
             const dayTransactions = getTransactionsForDay(day);
