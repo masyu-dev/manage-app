@@ -1,21 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '@/lib/store';
 import { Shift } from '@/types';
 import { format } from 'date-fns';
 import { createPortal } from 'react-dom';
-import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X } from 'lucide-react'; // アイコン追加
+import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X, Watch, ChevronDown } from 'lucide-react';
 import styles from './ShiftForm.module.css';
 
 interface ShiftFormProps {
   initialDate?: Date;
   existingShift?: Shift;
   onClose: () => void;
-  onSave?: () => void; // 親（カレンダー）に「保存したよ」と伝えるための関数
+  onSave?: () => void;
+  onDelete?: () => void;
+  onToast?: (msg: string) => void;
 }
 
-export default function ShiftForm({ initialDate, existingShift, onClose, onSave }: ShiftFormProps) {
+export default function ShiftForm({ initialDate, existingShift, onClose, onSave, onDelete, onToast }: ShiftFormProps) {
   const { addShift, updateShift, deleteShift, userConfig, shiftProfiles, addShiftProfile, jobs } = useApp();
 
   const [date, setDate] = useState(initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
@@ -26,13 +28,44 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave 
   const [profileName, setProfileName] = useState('');
   const [showProfileSave, setShowProfileSave] = useState(false);
   const [mounted, setMounted] = useState(false);
-  
-  // showToast state は削除しました（親側で管理するため）
+
+  // 休憩時間ピッカーの開閉状態
+  const [isBreakPickerOpen, setIsBreakPickerOpen] = useState(false);
+
+  // 現在の時間・分
+  const breakHours = Math.floor(breakTime / 60);
+  const breakMinutes = breakTime % 60;
+
+  // 選択肢（0時間〜5時間、0分〜59分）
+  const hourOptions = Array.from({ length: 6 }, (_, i) => i);
+  const minuteOptions = Array.from({ length: 60 }, (_, i) => i);
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
+
+  // 自動スクロール用のRef
+  const hoursRef = useRef<HTMLDivElement>(null);
+  const minutesRef = useRef<HTMLDivElement>(null);
+
+  // ピッカーが開いたときに、現在の選択位置までスクロールする
+  useEffect(() => {
+    if (isBreakPickerOpen) {
+      if (hoursRef.current) {
+        const selectedEl = hoursRef.current.querySelector(`[data-value="${breakHours}"]`) as HTMLElement;
+        if (selectedEl) {
+          hoursRef.current.scrollTop = selectedEl.offsetTop - hoursRef.current.offsetHeight / 2 + selectedEl.offsetHeight / 2;
+        }
+      }
+      if (minutesRef.current) {
+        const selectedEl = minutesRef.current.querySelector(`[data-value="${breakMinutes}"]`) as HTMLElement;
+        if (selectedEl) {
+          minutesRef.current.scrollTop = selectedEl.offsetTop - minutesRef.current.offsetHeight / 2 + selectedEl.offsetHeight / 2;
+        }
+      }
+    }
+  }, [isBreakPickerOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,9 +96,8 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave 
       addShift(shiftData);
     }
     
-    // 修正箇所：待たずに即座に親に通知して閉じる
-    if (onSave) onSave(); // カレンダー側に「保存完了！」と伝える
-    onClose();            // 画面を閉じる
+    if (onSave) onSave();
+    onClose();
   };
 
   const handleSaveProfile = () => {
@@ -80,7 +112,12 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave 
     });
     setShowProfileSave(false);
     setProfileName('');
-    alert('テンプレートを保存しました');
+    
+    if (onToast) {
+      onToast('テンプレートを保存しました');
+    } else {
+      alert('テンプレートを保存しました');
+    }
   };
 
   const loadProfile = (profileId: string) => {
@@ -96,6 +133,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave 
   const handleDelete = () => {
     if (existingShift) {
       deleteShift(existingShift.id);
+      if (onDelete) onDelete();
       onClose();
     }
   };
@@ -115,7 +153,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave 
 
         <form id="shift-form" onSubmit={handleSubmit} className={styles.form}>
           
-          {/* テンプレート呼び出し */}
           {shiftProfiles.length > 0 && (
             <div className={styles.formGroup}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -132,7 +169,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave 
             </div>
           )}
 
-          {/* バイト先選択 */}
           {jobs.length > 0 && (
             <div className={styles.formGroup}>
               <label>バイト先</label>
@@ -189,36 +225,147 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave 
             </div>
           </div>
 
-          {/* 休憩時間（トグル/チップUI） */}
+          {/* 休憩時間のUI：シフトボード風ドラムロール */}
           <div className={styles.formGroup}>
-            <label>休憩時間</label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {[0, 30, 60].map((time) => (
-                <button
-                  key={time}
-                  type="button"
-                  className={`btn ${breakTime === time ? 'btn-primary' : 'btn-outline'}`}
-                  style={{ flex: 1, padding: '8px' }}
-                  onClick={() => setBreakTime(time)}
-                >
-                  {time === 0 ? 'なし' : `${time}分`}
-                </button>
-              ))}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Watch size={16} /> 休憩時間
+            </label>
+            
+            {/* 1. トリガー行（現在の設定値を表示・クリックで開閉） */}
+            <div 
+              className="input" 
+              onClick={() => setIsBreakPickerOpen(!isBreakPickerOpen)}
+              style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                cursor: 'pointer',
+                backgroundColor: isBreakPickerOpen ? '#f0f9ff' : '#fff',
+                borderColor: isBreakPickerOpen ? 'hsl(var(--primary))' : 'var(--border)',
+                transition: 'all 0.2s'
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>
+                {breakTime === 0 ? '未設定 (0分)' : `${breakHours}時間 ${breakMinutes}分`}
+              </span>
+              <ChevronDown size={16} style={{ 
+                transform: isBreakPickerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+                color: '#666'
+              }} />
             </div>
-            <details style={{ marginTop: '8px' }}>
-              <summary style={{ fontSize: '0.8rem', color: '#666', cursor: 'pointer' }}>その他（手入力）</summary>
-              <input
-                type="number"
-                value={breakTime}
-                onChange={(e) => setBreakTime(Number(e.target.value))}
-                min="0"
-                className="input"
-                style={{ marginTop: '4px' }}
-              />
-            </details>
+
+            {/* 2. 展開するドラムロール（決定ボタンなし・即反映） */}
+            {isBreakPickerOpen && (
+              <div style={{ 
+                marginTop: '0px', // 入力欄とくっつける
+                border: '1px solid var(--border)', 
+                borderTop: 'none', // 上の線は消して一体感を出す
+                borderBottomLeftRadius: '8px',
+                borderBottomRightRadius: '8px',
+                overflow: 'hidden',
+                backgroundColor: '#fff',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                animation: 'slideDown 0.2s ease-out',
+                position: 'relative'
+              }}>
+                {/* 選択中の強調ライン（背景の薄い帯） */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: 0,
+                  right: 0,
+                  height: '40px',
+                  marginTop: '-20px',
+                  backgroundColor: '#f0f9ff',
+                  borderTop: '1px solid #e0f2fe',
+                  borderBottom: '1px solid #e0f2fe',
+                  pointerEvents: 'none', // クリックを透過させる
+                  zIndex: 0
+                }}></div>
+
+                <div style={{ display: 'flex', height: '180px' }}>
+                  {/* 時間の列 */}
+                  <div 
+                    ref={hoursRef}
+                    style={{ 
+                      flex: 1, 
+                      overflowY: 'auto', 
+                      scrollbarWidth: 'none', 
+                      msOverflowStyle: 'none',
+                      position: 'relative',
+                      zIndex: 1,
+                      scrollSnapType: 'y mandatory' // スナップ効果
+                    }}
+                  >
+                    <div style={{ height: '70px' }}></div> {/* 上の余白 */}
+                    {hourOptions.map(h => (
+                      <div 
+                        key={h}
+                        data-value={h}
+                        onClick={() => setBreakTime(h * 60 + breakMinutes)}
+                        style={{ 
+                          height: '40px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: breakHours === h ? 'hsl(var(--primary))' : '#999',
+                          fontWeight: breakHours === h ? 'bold' : 'normal',
+                          fontSize: breakHours === h ? '1.1rem' : '1rem',
+                          transition: 'all 0.2s',
+                          scrollSnapAlign: 'center' // 中央にスナップ
+                        }}
+                      >
+                        {h}時間
+                      </div>
+                    ))}
+                    <div style={{ height: '70px' }}></div> {/* 下の余白 */}
+                  </div>
+
+                  {/* 分の列 */}
+                  <div 
+                    ref={minutesRef}
+                    style={{ 
+                      flex: 1, 
+                      overflowY: 'auto', 
+                      scrollbarWidth: 'none', 
+                      msOverflowStyle: 'none',
+                      position: 'relative',
+                      zIndex: 1,
+                      scrollSnapType: 'y mandatory',
+                      borderLeft: '1px solid #f0f0f0'
+                    }}
+                  >
+                    <div style={{ height: '70px' }}></div>
+                    {minuteOptions.map(m => (
+                      <div 
+                        key={m}
+                        data-value={m}
+                        onClick={() => setBreakTime(breakHours * 60 + m)}
+                        style={{ 
+                          height: '40px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: breakMinutes === m ? 'hsl(var(--primary))' : '#999',
+                          fontWeight: breakMinutes === m ? 'bold' : 'normal',
+                          fontSize: breakMinutes === m ? '1.1rem' : '1rem',
+                          transition: 'all 0.2s',
+                          scrollSnapAlign: 'center'
+                        }}
+                      >
+                        {m}分
+                      </div>
+                    ))}
+                    <div style={{ height: '70px' }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* テンプレート保存機能 */}
           <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
             {!showProfileSave ? (
               <button type="button" onClick={() => setShowProfileSave(true)} className="btn btn-ghost" style={{ width: '100%', fontSize: '0.9rem', color: 'var(--primary)' }}>
