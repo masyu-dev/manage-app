@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { AppData, Shift, ShiftProfile, Tag, Job, Transaction, UserConfig } from '@/types';
 
 interface AppContextType extends AppData {
@@ -37,6 +37,7 @@ const defaultAppData: AppData = {
     themeMode: 'light',
     themeColor: 'blue',
     nightWageMultiplier: 1.25,
+    fixedCosts: [], //データの初期値と,保存データの読み込み時の補完を設定
   },
 };
 
@@ -56,7 +57,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!parsed.userConfig.nightWageMultiplier) parsed.userConfig.nightWageMultiplier = 1.25;
         // Ensure existing tags are preserved if any, otherwise use default
         if (!parsed.tags || parsed.tags.length === 0) parsed.tags = defaultAppData.tags;
-
+        if (!parsed.userConfig.fixedCosts) parsed.userConfig.fixedCosts = []; //データ復元処理
         setData(parsed);
       } catch (e) {
         console.error('Failed to load data', e);
@@ -79,38 +80,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [data.userConfig.themeMode, data.userConfig.themeColor, loaded]);
 
-  const addShift = (shift: Shift) => {
-    setData(prev => ({ ...prev, shifts: [...prev.shifts, shift] }));
-  };
+  //無限ループ防止のためにuseCallbackを使用
 
-  const updateShift = (updatedShift: Shift) => {
+  const addShift = useCallback((shift: Shift) => {
+    setData(prev => ({ ...prev, shifts: [...prev.shifts, shift] }));
+  }, []);
+
+  const updateShift = useCallback((updatedShift: Shift) => {
     setData(prev => ({
       ...prev,
       shifts: prev.shifts.map(s => s.id === updatedShift.id ? updatedShift : s)
     }));
-  };
+  }, []);
 
-  const deleteShift = (id: string) => {
+  const deleteShift = useCallback((id: string) => {
     setData(prev => ({
       ...prev,
       shifts: prev.shifts.filter(s => s.id !== id)
     }));
-  };
+  }, []);
 
-  const addTransaction = (transaction: Transaction) => {
+  const addTransaction = useCallback((transaction: Transaction) => {
     setData(prev => ({ ...prev, transactions: [...prev.transactions, transaction] }));
-  };
+  }, []);
 
-  const deleteTransaction = (id: string) => {
-    setData(prev => ({
-      ...prev,
-      transactions: prev.transactions.filter(t => t.id !== id)
-    }));
-  };
+  const deleteTransaction = useCallback((id: string) => {
+    setData(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
+  }, []);
 
-  const updateUserConfig = (config: Partial<UserConfig>) => {
+  const updateUserConfig = useCallback((config: Partial<UserConfig>) => {
     setData(prev => ({ ...prev, userConfig: { ...prev.userConfig, ...config } }));
-  };
+  }, []);
 
   const addShiftProfile = (profile: ShiftProfile) => {
     setData(prev => ({ ...prev, shiftProfiles: [...prev.shiftProfiles, profile] }));

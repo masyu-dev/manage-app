@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
@@ -30,15 +30,63 @@ const variants = {
 };
 
 export default function BudgetView() {
-  const { transactions, tags, addTag, deleteTag, deleteTransaction, userConfig, shifts, jobs } = useApp();
+const { 
+    transactions, 
+    tags, 
+    addTag, 
+    deleteTag, 
+    deleteTransaction, 
+    userConfig, 
+    shifts, 
+    addTransaction,   // feature-HAC_Subsc で必要
+    updateUserConfig, // feature-HAC_Subsc で必要
+    jobs              // main で必要
+  } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // --- 39行目 〜 67行目を以下に書き換え ---
+  useEffect(() => {
+    if (!userConfig.fixedCosts?.length) return;
+
+    // 現在表示されている月の「年-月」 (例: "2024-05")
+    const monthStr = format(currentDate, 'yyyy-MM');
+
+    userConfig.fixedCosts.forEach(cost => {
+      const fixedDescription = `${cost.name} (固定費)`;
+
+      // 重複チェック：今月の履歴に「同じ説明文」のデータがあるか判定
+      const isAlreadyAdded = transactions.some(t => 
+        t.date.startsWith(monthStr) && t.description === fixedDescription
+      );
+
+      if (!isAlreadyAdded) {
+        const dayStr = String(cost.day).padStart(2, '0');
+        addTransaction({
+          id: crypto.randomUUID(),
+          date: `${monthStr}-${dayStr}`,
+          amount: cost.amount,
+          type: 'expense',
+          tagId: cost.tagId,
+          description: fixedDescription,
+        });
+      }
+    });
+    // 重要な修正：transactions そのものではなく .length を監視することでループを防ぎます
+  }, [currentDate, userConfig.fixedCosts, transactions.length]);
 
   // Tag Form State
   const [isTagFormOpen, setIsTagFormOpen] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
+
+// --- 固定費設定用のステート ---
+  const [isFixedSettingsOpen, setIsFixedSettingsOpen] = useState(false);
+  const [newFixedName, setNewFixedName] = useState('');
+  const [newFixedAmount, setNewFixedAmount] = useState('');
+  const [newFixedDay, setNewFixedDay] = useState('1');
+  const [newFixedTagId, setNewFixedTagId] = useState('');
 
   const handleAddTag = () => {
     if (newTagName) {
@@ -240,6 +288,85 @@ export default function BudgetView() {
             </div>
           ))}
         </div>
+      </div>
+
+{/* --- カレンダーの直前に挿入 --- */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ fontSize: '1rem' }}>固定費の自動入力設定</h3>
+          <button onClick={() => setIsFixedSettingsOpen(!isFixedSettingsOpen)} className="btn btn-outline" style={{ padding: '0.25rem' }}>
+            <Plus size={16} />
+          </button>
+        </div>
+
+        {isFixedSettingsOpen && (
+          <div style={{ padding: '1rem', backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 'var(--radius)', border: '1px solid hsl(var(--border))' }}>
+            {/* 入力フォーム */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input className="input" placeholder="項目名 (例: 家賃)" value={newFixedName} onChange={e => setNewFixedName(e.target.value)} style={{ flex: 2 }} />
+                <input className="input" type="number" placeholder="金額" value={newFixedAmount} onChange={e => setNewFixedAmount(e.target.value)} style={{ flex: 1 }} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <select className="input" value={newFixedDay} onChange={e => setNewFixedDay(e.target.value)} style={{ flex: 1 }}>
+                  {[...Array(31)].map((_, i) => <option key={i+1} value={i+1}>{i+1}日</option>)}
+                </select>
+                <select className="input" value={newFixedTagId} onChange={e => setNewFixedTagId(e.target.value)} style={{ flex: 2 }}>
+                  <option value="" disabled>カテゴリ</option>
+                  {tags.filter(t => t.type === 'expense').map(tag => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+                </select>
+                <button className="btn btn-primary" onClick={() => {
+                  if (!newFixedName || !newFixedAmount || !newFixedTagId) return;
+                  updateUserConfig({ fixedCosts: [...(userConfig.fixedCosts || []), { id: crypto.randomUUID(), name: newFixedName, amount: Number(newFixedAmount), day: Number(newFixedDay), tagId: newFixedTagId }] });
+                  setNewFixedName(''); setNewFixedAmount('');
+                }}>追加</button>
+              </div>
+            </div>
+            
+            {/* 登録済みリスト */}
+            <div style={{ borderTop: '1px solid #ddd', paddingTop: '0.5rem' }}>
+              {userConfig.fixedCosts?.map(cost => (
+                <div 
+                  key={cost.id} 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', // 垂直方向の中央揃え
+                    fontSize: '0.8rem', 
+                    padding: '0.4rem 0', 
+                    borderBottom: '1px solid #eee' 
+                  }}
+                >
+                  <span>{cost.day}日: {cost.name} (¥{cost.amount.toLocaleString()})</span>
+                  
+                  {/* 丸みを帯びた四角い枠の削除ボタン */}
+                  <button 
+                    onClick={() => updateUserConfig({ fixedCosts: userConfig.fixedCosts.filter(c => c.id !== cost.id) })} 
+                    style={{ 
+                      color: '#dc2626',                  // 直接的な赤色指定
+                      border: '1px solid #dc2626',       // 直接的な赤色指定
+                      borderRadius: '6px',
+                      padding: '4px 12px',
+                      backgroundColor: 'transparent',
+                      cursor: 'pointer',
+                      fontSize: '0.75rem',
+                      fontFamily: 'inherit',             // フォント継承
+                      transition: 'all 0.2s ease'        // ホバーアニメーション用
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fee2e2';  // ホバー時の背景色
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    削除
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <BudgetCalendar />

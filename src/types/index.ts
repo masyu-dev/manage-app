@@ -24,6 +24,13 @@ export interface Transaction {
   description?: string;
 }
 
+export interface FixedCost {
+  id: string;
+  name: string;
+  amount: number;
+  day: number;    // 発生日 (1-31)
+  tagId: string;  // カテゴリID
+}
 export interface ShiftProfile {
   id: string;
   name: string;
@@ -51,6 +58,7 @@ export interface UserConfig {
   themeMode: 'light' | 'dark' | 'dark-gray';
   themeColor: string; // 'blue', 'purple', 'orange', etc.
   nightWageMultiplier: number; // Default 1.25
+  fixedCosts: FixedCost[];
 }
 
 export interface AppData {
