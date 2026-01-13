@@ -1,13 +1,17 @@
 'use client';
 
+import React, { useState } from 'react'; // フォームの入力内容を管理するために必要
 import { useApp } from '@/lib/store';
+
 
 type Props = {
   onClose: () => void;
 };
 
 export default function BudgetSettings({ onClose }: Props) {
-  const { userConfig, updateUserConfig } = useApp();
+  const { userConfig, updateUserConfig, tags } = useApp();
+
+  
 
   return (
     <div
