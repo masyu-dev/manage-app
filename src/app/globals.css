@@ -165,6 +165,22 @@ a {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* Force header colors in dark modes */
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] h4,
+[data-theme='dark'] h5,
+[data-theme='dark'] h6,
+[data-theme='dark-gray'] h1,
+[data-theme='dark-gray'] h2,
+[data-theme='dark-gray'] h3,
+[data-theme='dark-gray'] h4,
+[data-theme='dark-gray'] h5,
+[data-theme='dark-gray'] h6 {
+  color: white;
+}
+
 .input {
   width: 100%;
   padding: 0.5rem;

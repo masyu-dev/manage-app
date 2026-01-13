@@ -29,6 +29,11 @@
   font-weight: bold;
 }
 
+:global([data-theme='dark']) .monthTitle,
+:global([data-theme='dark-gray']) .monthTitle {
+  color: white;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
