@@ -327,6 +327,19 @@ export default function SalaryView() {
               <label style={{ fontSize: '0.75rem' }}>時給</label>
               <input className="input" type="number" style={{ width: '100%' }} value={newJobWage} onChange={e => setNewJobWage(e.target.value)} />
             </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ fontSize: '0.75rem' }}>給料日 (日)</label>
+              <input
+                className="input"
+                type="number"
+                min="1"
+                max="31"
+                style={{ width: '100%' }}
+                value={newJobPayDay}
+                onChange={e => setNewJobPayDay(e.target.value)}
+                placeholder="25"
+              />
+            </div>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ fontSize: '0.75rem' }}>カラー</label>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
