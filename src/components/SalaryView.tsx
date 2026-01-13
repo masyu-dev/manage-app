@@ -5,7 +5,7 @@ import { useApp } from '@/lib/store';
 import { calculateMonthlySalary, calculateShiftSalary, calculateDuration } from '@/lib/calculations';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Trash2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#FF9F1C', '#2EC4B6', '#E71D36'];
@@ -26,7 +26,7 @@ const variants = {
 };
 
 export default function SalaryView() {
-  const { shifts, userConfig, updateUserConfig, jobs, addJob, deleteJob } = useApp();
+  const { shifts, userConfig, updateUserConfig, jobs, addJob, updateJob, deleteJob } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
 
@@ -36,6 +36,7 @@ export default function SalaryView() {
   const [newJobColor, setNewJobColor] = useState(COLORS[0]);
   const [newJobPayDay, setNewJobPayDay] = useState('25');
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
   // Wage Input State
   const [hourlyWageInput, setHourlyWageInput] = useState(userConfig.hourlyWage.toString());
@@ -83,18 +84,45 @@ export default function SalaryView() {
 
   const handleAddJob = () => {
     if (newJobName && newJobWage) {
-      addJob({
-        id: crypto.randomUUID(),
+      const jobData = {
         name: newJobName,
         hourlyWage: Number(newJobWage),
         color: newJobColor,
         payDay: Number(newJobPayDay) || 25,
-      });
-      setNewJobName('');
-      setNewJobWage(userConfig.hourlyWage.toString());
-      setNewJobPayDay('25');
-      setIsJobFormOpen(false);
+      };
+
+      if (editingJobId) {
+        updateJob({
+          ...jobData,
+          id: editingJobId,
+        });
+      } else {
+        addJob({
+          ...jobData,
+          id: crypto.randomUUID(),
+        });
+      }
+
+      resetJobForm();
     }
+  };
+
+  const resetJobForm = () => {
+    setNewJobName('');
+    setNewJobWage(userConfig.hourlyWage.toString());
+    setNewJobColor(COLORS[0]);
+    setNewJobPayDay('25');
+    setEditingJobId(null);
+    setIsJobFormOpen(false);
+  };
+
+  const handleEditJob = (job: any) => { // Use proper type if possible, imported from @/types
+    setNewJobName(job.name);
+    setNewJobWage(job.hourlyWage.toString());
+    setNewJobColor(job.color);
+    setNewJobPayDay(job.payDay ? job.payDay.toString() : '25');
+    setEditingJobId(job.id);
+    setIsJobFormOpen(true);
   };
 
   // 深夜手当: 金額入力時のハンドラ
@@ -281,8 +309,11 @@ export default function SalaryView() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <h3>バイト先管理</h3>
-          <button onClick={() => setIsJobFormOpen(!isJobFormOpen)} className="btn btn-outline" style={{ padding: '0.25rem' }}>
-            <Plus size={16} />
+          <button onClick={() => {
+            if (isJobFormOpen) resetJobForm();
+            else setIsJobFormOpen(true);
+          }} className="btn btn-outline" style={{ padding: '0.25rem' }}>
+            {isJobFormOpen ? <X size={16} /> : <Plus size={16} />}
           </button>
         </div>
 
@@ -312,8 +343,10 @@ export default function SalaryView() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => setIsJobFormOpen(false)} className="btn btn-outline" style={{ fontSize: '0.875rem' }}>キャンセル</button>
-              <button onClick={handleAddJob} className="btn btn-primary" style={{ fontSize: '0.875rem' }}>追加</button>
+              <button onClick={resetJobForm} className="btn btn-outline" style={{ fontSize: '0.875rem' }}>キャンセル</button>
+              <button onClick={handleAddJob} className="btn btn-primary" style={{ fontSize: '0.875rem' }}>
+                {editingJobId ? '更新' : '追加'}
+              </button>
             </div>
           </div>
         )}
@@ -325,10 +358,20 @@ export default function SalaryView() {
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: job.color }}></div>
                 <div>
                   <div style={{ fontWeight: 'bold' }}>{job.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#666' }}>¥{job.hourlyWage.toLocaleString()} / h</div>
+                  <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: '#666' }}>
+                    <span>¥{job.hourlyWage.toLocaleString()} / h</span>
+                    {job.payDay && <span>給料日: {job.payDay}日</span>}
+                  </div>
                 </div>
               </div>
-              <button onClick={() => deleteJob(job.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}><Trash2 size={16} /></button>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <button onClick={() => handleEditJob(job)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}>
+                  <Pencil size={16} />
+                </button>
+                <button onClick={() => deleteJob(job.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
           {jobs.length === 0 && <div style={{ fontSize: '0.875rem', color: '#666' }}>バイト先が登録されていません。デフォルト時給が使用されます。</div>}
