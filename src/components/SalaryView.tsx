@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import { calculateMonthlySalary, calculateShiftSalary, calculateDuration } from '@/lib/calculations';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X, Trash2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#FF9F1C', '#2EC4B6', '#E71D36'];
@@ -26,7 +26,7 @@ const variants = {
 };
 
 export default function SalaryView() {
-  const { shifts, userConfig, updateUserConfig, jobs, addJob, deleteJob } = useApp();
+  const { shifts, userConfig, updateUserConfig, jobs, addJob, updateJob, deleteJob } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
 
@@ -34,25 +34,25 @@ export default function SalaryView() {
   const [newJobName, setNewJobName] = useState('');
   const [newJobWage, setNewJobWage] = useState(userConfig.hourlyWage.toString());
   const [newJobColor, setNewJobColor] = useState(COLORS[0]);
+  const [newJobPayDay, setNewJobPayDay] = useState('25');
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
+  const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
-  // Wage Input State (Local state to allow decimal input and clearing)
+  // Wage Input State
   const [hourlyWageInput, setHourlyWageInput] = useState(userConfig.hourlyWage.toString());
   const [nightWageInput, setNightWageInput] = useState(userConfig.nightWageMultiplier ? userConfig.nightWageMultiplier.toString() : '1.25');
 
-  // Sync from store only if vastly different (to respect local editing)
-  React.useEffect(() => {
+  // 新機能: 深夜手当の入力モード ('multiplier' = 倍率, 'amount' = 金額)
+  const [nightWageMode, setNightWageMode] = useState<'multiplier' | 'amount'>('multiplier');
+
+  // Sync from store
+  useEffect(() => {
     if (Number(hourlyWageInput) !== userConfig.hourlyWage && hourlyWageInput !== '' && userConfig.hourlyWage !== 0) {
-      // Only sync if remote changed significantly and we aren't in standard editing flow? 
-      // Actually simplified logic: If store value is 0 but we have empty string, don't sync.
-      // If store value X matches Number(input), don't sync.
-      // If store value changes externally (e.g. initial load), sync.
       setHourlyWageInput(userConfig.hourlyWage.toString());
     }
   }, [userConfig.hourlyWage]);
 
-  React.useEffect(() => {
-    // Similar logic for night wage
+  useEffect(() => {
     const currentNight = Number(nightWageInput);
     const storeNight = userConfig.nightWageMultiplier;
     if (currentNight !== storeNight && !(nightWageInput === '' && storeNight === 0)) {
@@ -84,17 +84,63 @@ export default function SalaryView() {
 
   const handleAddJob = () => {
     if (newJobName && newJobWage) {
-      addJob({
-        id: crypto.randomUUID(),
+      const jobData = {
         name: newJobName,
         hourlyWage: Number(newJobWage),
         color: newJobColor,
-      });
-      setNewJobName('');
-      setNewJobWage(userConfig.hourlyWage.toString());
-      setIsJobFormOpen(false);
+        payDay: Number(newJobPayDay) || 25,
+      };
+
+      if (editingJobId) {
+        updateJob({
+          ...jobData,
+          id: editingJobId,
+        });
+      } else {
+        addJob({
+          ...jobData,
+          id: crypto.randomUUID(),
+        });
+      }
+
+      resetJobForm();
     }
   };
+
+  const resetJobForm = () => {
+    setNewJobName('');
+    setNewJobWage(userConfig.hourlyWage.toString());
+    setNewJobColor(COLORS[0]);
+    setNewJobPayDay('25');
+    setEditingJobId(null);
+    setIsJobFormOpen(false);
+  };
+
+  const handleEditJob = (job: any) => { // Use proper type if possible, imported from @/types
+    setNewJobName(job.name);
+    setNewJobWage(job.hourlyWage.toString());
+    setNewJobColor(job.color);
+    setNewJobPayDay(job.payDay ? job.payDay.toString() : '25');
+    setEditingJobId(job.id);
+    setIsJobFormOpen(true);
+  };
+
+  // 深夜手当: 金額入力時のハンドラ
+  const handleNightAmountChange = (amountStr: string) => {
+    const amount = Number(amountStr);
+    const baseWage = Number(hourlyWageInput);
+
+    if (baseWage > 0 && amount > 0) {
+      const calculatedMultiplier = amount / baseWage;
+      setNightWageInput(calculatedMultiplier.toString());
+      updateUserConfig({ nightWageMultiplier: calculatedMultiplier });
+    } else if (amountStr === '') {
+      updateUserConfig({ nightWageMultiplier: 0 });
+    }
+  };
+
+  // 表示用の深夜時給金額を計算
+  const currentNightAmount = Math.round(Number(hourlyWageInput) * Number(nightWageInput));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -142,6 +188,7 @@ export default function SalaryView() {
       <div className="card">
         <h3>基本設定</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+          {/* 基本時給 */}
           <div>
             <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>基本時給</div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -154,27 +201,106 @@ export default function SalaryView() {
                   updateUserConfig({ hourlyWage: val === '' ? 0 : Number(val) });
                 }}
                 className="input"
+                placeholder="1000"
               />
-              <span style={{ alignSelf: 'center' }}>円</span>
+              <span style={{ alignSelf: 'center', minWidth: '2em' }}>円</span>
             </div>
           </div>
+
+          {/* 深夜手当設定 */}
           <div>
-            <div style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.25rem' }}>
-              深夜手当倍率 (22:00以降)
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '0.5rem' }}>
+              <div style={{ fontSize: '0.875rem', color: '#666' }}>
+                深夜手当 (22:00以降)
+              </div>
+
+              {/* スイッチUI */}
+              <div style={{
+                display: 'flex',
+                position: 'relative',
+                backgroundColor: '#f3f4f6',
+                padding: '4px',
+                borderRadius: '9999px',
+                border: '1px solid #e5e7eb'
+              }}>
+                {[
+                  { id: 'multiplier', label: '倍率' },
+                  { id: 'amount', label: '金額' }
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setNightWageMode(mode.id as 'multiplier' | 'amount')}
+                    style={{
+                      position: 'relative',
+                      zIndex: 1,
+                      padding: '4px 12px',
+                      fontSize: '0.75rem',
+                      fontWeight: nightWageMode === mode.id ? '600' : '400',
+                      color: nightWageMode === mode.id ? '#000' : '#666',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      transition: 'color 0.2s',
+                      minWidth: '60px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {mode.label}
+                    {nightWageMode === mode.id && (
+                      <motion.div
+                        layoutId="active-switch-bg"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          backgroundColor: '#ffffff',
+                          borderRadius: '9999px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                          zIndex: -1
+                        }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
+
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="number"
-                step="0.05"
-                value={nightWageInput}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setNightWageInput(val);
-                  updateUserConfig({ nightWageMultiplier: val === '' ? 0 : Number(val) });
-                }}
-                className="input"
-              />
-              <span style={{ alignSelf: 'center' }}>倍</span>
+              {nightWageMode === 'multiplier' ? (
+                <>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={nightWageInput}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNightWageInput(val);
+                      updateUserConfig({ nightWageMultiplier: val === '' ? 0 : Number(val) });
+                    }}
+                    className="input"
+                    placeholder="1.25"
+                  />
+                  <span style={{ alignSelf: 'center', minWidth: '2em' }}>倍</span>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="number"
+                    value={currentNightAmount || ''}
+                    onChange={(e) => handleNightAmountChange(e.target.value)}
+                    className="input"
+                    placeholder="1250"
+                  />
+                  <span style={{ alignSelf: 'center', minWidth: '2em' }}>円</span>
+                </>
+              )}
+            </div>
+            {/* 補助テキスト */}
+            <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem', textAlign: 'right' }}>
+              {nightWageMode === 'multiplier'
+                ? `(時給換算: ¥${currentNightAmount.toLocaleString()})`
+                : `(倍率換算: ${Number(nightWageInput).toFixed(2)}倍)`
+              }
             </div>
           </div>
         </div>
@@ -183,8 +309,11 @@ export default function SalaryView() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <h3>バイト先管理</h3>
-          <button onClick={() => setIsJobFormOpen(!isJobFormOpen)} className="btn btn-outline" style={{ padding: '0.25rem' }}>
-            <Plus size={16} />
+          <button onClick={() => {
+            if (isJobFormOpen) resetJobForm();
+            else setIsJobFormOpen(true);
+          }} className="btn btn-outline" style={{ padding: '0.25rem' }}>
+            {isJobFormOpen ? <X size={16} /> : <Plus size={16} />}
           </button>
         </div>
 
@@ -197,6 +326,19 @@ export default function SalaryView() {
             <div style={{ marginBottom: '0.5rem' }}>
               <label style={{ fontSize: '0.75rem' }}>時給</label>
               <input className="input" type="number" style={{ width: '100%' }} value={newJobWage} onChange={e => setNewJobWage(e.target.value)} />
+            </div>
+            <div style={{ marginBottom: '0.5rem' }}>
+              <label style={{ fontSize: '0.75rem' }}>給料日 (日)</label>
+              <input
+                className="input"
+                type="number"
+                min="1"
+                max="31"
+                style={{ width: '100%' }}
+                value={newJobPayDay}
+                onChange={e => setNewJobPayDay(e.target.value)}
+                placeholder="25"
+              />
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ fontSize: '0.75rem' }}>カラー</label>
@@ -214,8 +356,10 @@ export default function SalaryView() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => setIsJobFormOpen(false)} className="btn btn-outline" style={{ fontSize: '0.875rem' }}>キャンセル</button>
-              <button onClick={handleAddJob} className="btn btn-primary" style={{ fontSize: '0.875rem' }}>追加</button>
+              <button onClick={resetJobForm} className="btn btn-outline" style={{ fontSize: '0.875rem' }}>キャンセル</button>
+              <button onClick={handleAddJob} className="btn btn-primary" style={{ fontSize: '0.875rem' }}>
+                {editingJobId ? '更新' : '追加'}
+              </button>
             </div>
           </div>
         )}
@@ -227,10 +371,20 @@ export default function SalaryView() {
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: job.color }}></div>
                 <div>
                   <div style={{ fontWeight: 'bold' }}>{job.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#666' }}>¥{job.hourlyWage.toLocaleString()} / h</div>
+                  <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: '#666' }}>
+                    <span>¥{job.hourlyWage.toLocaleString()} / h</span>
+                    {job.payDay && <span>給料日: {job.payDay}日</span>}
+                  </div>
                 </div>
               </div>
-              <button onClick={() => deleteJob(job.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}><Trash2 size={16} /></button>
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                <button onClick={() => handleEditJob(job)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}>
+                  <Pencil size={16} />
+                </button>
+                <button onClick={() => deleteJob(job.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
           {jobs.length === 0 && <div style={{ fontSize: '0.875rem', color: '#666' }}>バイト先が登録されていません。デフォルト時給が使用されます。</div>}

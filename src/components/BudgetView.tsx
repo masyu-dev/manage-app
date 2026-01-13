@@ -30,8 +30,18 @@ const variants = {
 };
 
 export default function BudgetView() {
-// 34行目を以下に書き換え
-  const { transactions, tags, addTag, deleteTag, deleteTransaction, userConfig, shifts, addTransaction, updateUserConfig } = useApp();
+const { 
+    transactions, 
+    tags, 
+    addTag, 
+    deleteTag, 
+    deleteTransaction, 
+    userConfig, 
+    shifts, 
+    addTransaction,   // feature-HAC_Subsc で必要
+    updateUserConfig, // feature-HAC_Subsc で必要
+    jobs              // main で必要
+  } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -100,32 +110,49 @@ export default function BudgetView() {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
 
-  // Calculate Estimated Salary
-  const payDay = userConfig.payDay || 25;
-  const payDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), Math.min(payDay, endOfMonth(currentDate).getDate()));
+  // Calculate Scheduled Salary per Job
+  const scheduledSalaries = jobs.map(job => {
+    const payDay = job.payDay || 25; // Default to 25 if not set
+    const payDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), Math.min(payDay, endOfMonth(currentDate).getDate()));
 
-  // Salary is for the previous month
-  const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-  const estimatedSalary = calculateMonthlySalary(shifts, prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1);
+    // Logic: Salary for month M is usually paid in month M+1 or M. 
+    // Assuming standard "paid next month" for now, or use previous month's shifts.
+    // Let's assume the payday in THIS month pays for LAST month's shifts.
+    const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
 
-  const salaryTransaction = {
-    id: 'salary-schedule',
-    date: payDate.toISOString().split('T')[0],
-    amount: estimatedSalary,
-    type: 'income' as const,
-    tagId: 'salary', // Virtual tag
-    description: '給与予定',
-    isVirtual: true,
-  };
+    // Filter shifts for this job in the previous month
+    const jobShifts = shifts.filter(s => {
+      const d = new Date(s.date);
+      return s.jobId === job.id &&
+        d.getFullYear() === prevMonthDate.getFullYear() &&
+        d.getMonth() === prevMonthDate.getMonth();
+    });
+
+    const jobSalary = calculateMonthlySalary(jobShifts, prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, userConfig.nightWageMultiplier); // Assuming this helper works with filtered shifts
+
+    if (jobSalary === 0) return null;
+
+    return {
+      id: `salary-${job.id}`,
+      date: payDate.toISOString().split('T')[0],
+      amount: jobSalary,
+      type: 'income' as const,
+      tagId: 'salary', // Virtual tag
+      description: `給与予定 (${job.name})`,
+      isVirtual: true,
+      jobColor: job.color, // Helper to color code
+    };
+  }).filter(Boolean) as any[]; // Type cast for custom props
+
+  // Fallback for default job/shifts without job ID if needed, but we encourage using jobs now.
+  // If there are shifts without jobId, we might need a "General" salary entry using global settings?
+  // For simplicity, let's assume we proceed with job-based.
 
   const rawTransactions = transactions.filter(t =>
     isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
   );
 
-  // Add salary to transactions if it's within the current view month (which it always is by definition of payDate)
-  // But only if there isn't already a manual "Salary" entry on that day to avoid duplication if user manually added it?
-  // For now, let's just show it as "Scheduled".
-  const currentMonthTransactions = [...rawTransactions, salaryTransaction].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const currentMonthTransactions = [...rawTransactions, ...scheduledSalaries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const income = currentMonthTransactions
     .filter(t => t.type === 'income')

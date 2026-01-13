@@ -12,6 +12,7 @@ export interface Job {
   name: string;
   hourlyWage: number;
   color: string;
+  payDay?: number; // 1-31
 }
 
 export interface Transaction {
@@ -54,7 +55,7 @@ export interface UserConfig {
   monthlyBudget: number;
   savingsGoal: number;
   payDay: number; // Day of month (1-31)
-  themeMode: 'light' | 'dark';
+  themeMode: 'light' | 'dark' | 'dark-gray';
   themeColor: string; // 'blue', 'purple', 'orange', etc.
   nightWageMultiplier: number; // Default 1.25
   fixedCosts: FixedCost[];

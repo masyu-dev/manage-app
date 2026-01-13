@@ -45,20 +45,6 @@ export default function BudgetSettings({ onClose }: Props) {
         />
       </div>
 
-      <div style={{ marginBottom: '0.75rem' }}>
-        <label>給料日（日）</label>
-        <input
-          type="number"
-          className="input"
-          min={1}
-          max={31}
-          value={userConfig.payDay}
-          onChange={(e) =>
-            updateUserConfig({ payDay: Number(e.target.value) })
-          }
-        />
-      </div>
-
       <button className="btn btn-outline" onClick={onClose}>
         閉じる
       </button>

@@ -12,9 +12,26 @@
   margin-bottom: 1rem;
 }
 
+/* Force white buttons in dark modes */
+:global([data-theme='dark']) .header button,
+:global([data-theme='dark-gray']) .header button {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+:global([data-theme='dark']) .header button:hover,
+:global([data-theme='dark-gray']) .header button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
 .monthTitle {
   font-size: 1.5rem;
   font-weight: bold;
+}
+
+:global([data-theme='dark']) .monthTitle,
+:global([data-theme='dark-gray']) .monthTitle {
+  color: white;
 }
 
 .grid {
@@ -42,8 +59,10 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* Prevent expanding beyond grid column */
-  overflow: hidden; /* Hide overflow content */
+  min-width: 0;
+  /* Prevent expanding beyond grid column */
+  overflow: hidden;
+  /* Hide overflow content */
 }
 
 .disabled {
@@ -97,8 +116,10 @@
 }
 
 .today .dateNumber {
-  background-color: hsl(var(--primary)); /* 数字の背景をメインカラーに */
-  color: white; /* 文字を白に */
+  background-color: hsl(var(--primary));
+  /* 数字の背景をメインカラーに */
+  color: white;
+  /* 文字を白に */
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -144,7 +165,7 @@
 
   .calendarContainer {
     padding: 0.5rem;
-  /* Reduce padding on mobile */
+    /* Reduce padding on mobile */
   }
 }
 
@@ -154,4 +175,24 @@
 
 .sunday {
   color: #ef4444;
+}
+
+.today .dateNumber {
+  background-color: hsl(var(--primary));
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .today .dateNumber {
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+  }
 }

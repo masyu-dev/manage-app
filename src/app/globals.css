@@ -44,8 +44,21 @@
   --card: 222 47% 13%;
   --card-foreground: 210 40% 98%;
 
-  --border: 217 32% 17%;
+  /* Lighter border for better visibility of grid lines */
+  --border: 217 32% 25%;
   --input: 217 32% 17%;
+}
+
+/* Dark Mode (Gray Base) */
+[data-theme='dark-gray'] {
+  --background: 0 0% 12%;
+  --foreground: 0 0% 98%;
+
+  --card: 0 0% 15%;
+  --card-foreground: 0 0% 98%;
+
+  --border: 0 0% 30%;
+  --input: 0 0% 20%;
 }
 
 /* Theme Colors */
@@ -138,6 +151,34 @@ a {
 
 .btn-outline:hover {
   background-color: hsl(var(--border));
+}
+
+/* Dark Mode Overrides for Buttons */
+[data-theme='dark'] .btn-outline,
+[data-theme='dark-gray'] .btn-outline {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme='dark'] .btn-outline:hover,
+[data-theme='dark-gray'] .btn-outline:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Force header colors in dark modes */
+[data-theme='dark'] h1,
+[data-theme='dark'] h2,
+[data-theme='dark'] h3,
+[data-theme='dark'] h4,
+[data-theme='dark'] h5,
+[data-theme='dark'] h6,
+[data-theme='dark-gray'] h1,
+[data-theme='dark-gray'] h2,
+[data-theme='dark-gray'] h3,
+[data-theme='dark-gray'] h4,
+[data-theme='dark-gray'] h5,
+[data-theme='dark-gray'] h6 {
+  color: white;
 }
 
 .input {
