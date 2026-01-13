@@ -34,12 +34,13 @@ export default function SalaryView() {
   const [newJobName, setNewJobName] = useState('');
   const [newJobWage, setNewJobWage] = useState(userConfig.hourlyWage.toString());
   const [newJobColor, setNewJobColor] = useState(COLORS[0]);
+  const [newJobPayDay, setNewJobPayDay] = useState('25');
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
 
   // Wage Input State
   const [hourlyWageInput, setHourlyWageInput] = useState(userConfig.hourlyWage.toString());
   const [nightWageInput, setNightWageInput] = useState(userConfig.nightWageMultiplier ? userConfig.nightWageMultiplier.toString() : '1.25');
-  
+
   // 新機能: 深夜手当の入力モード ('multiplier' = 倍率, 'amount' = 金額)
   const [nightWageMode, setNightWageMode] = useState<'multiplier' | 'amount'>('multiplier');
 
@@ -87,9 +88,11 @@ export default function SalaryView() {
         name: newJobName,
         hourlyWage: Number(newJobWage),
         color: newJobColor,
+        payDay: Number(newJobPayDay) || 25,
       });
       setNewJobName('');
       setNewJobWage(userConfig.hourlyWage.toString());
+      setNewJobPayDay('25');
       setIsJobFormOpen(false);
     }
   };
@@ -98,13 +101,13 @@ export default function SalaryView() {
   const handleNightAmountChange = (amountStr: string) => {
     const amount = Number(amountStr);
     const baseWage = Number(hourlyWageInput);
-    
+
     if (baseWage > 0 && amount > 0) {
       const calculatedMultiplier = amount / baseWage;
       setNightWageInput(calculatedMultiplier.toString());
       updateUserConfig({ nightWageMultiplier: calculatedMultiplier });
     } else if (amountStr === '') {
-       updateUserConfig({ nightWageMultiplier: 0 });
+      updateUserConfig({ nightWageMultiplier: 0 });
     }
   };
 
@@ -182,14 +185,14 @@ export default function SalaryView() {
               <div style={{ fontSize: '0.875rem', color: '#666' }}>
                 深夜手当 (22:00以降)
               </div>
-              
+
               {/* スイッチUI */}
-              <div style={{ 
-                display: 'flex', 
+              <div style={{
+                display: 'flex',
                 position: 'relative',
-                backgroundColor: '#f3f4f6', 
-                padding: '4px', 
-                borderRadius: '9999px', 
+                backgroundColor: '#f3f4f6',
+                padding: '4px',
+                borderRadius: '9999px',
                 border: '1px solid #e5e7eb'
               }}>
                 {[
@@ -266,7 +269,7 @@ export default function SalaryView() {
             </div>
             {/* 補助テキスト */}
             <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem', textAlign: 'right' }}>
-              {nightWageMode === 'multiplier' 
+              {nightWageMode === 'multiplier'
                 ? `(時給換算: ¥${currentNightAmount.toLocaleString()})`
                 : `(倍率換算: ${Number(nightWageInput).toFixed(2)}倍)`
               }

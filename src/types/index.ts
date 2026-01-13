@@ -12,6 +12,7 @@ export interface Job {
   name: string;
   hourlyWage: number;
   color: string;
+  payDay?: number; // 1-31
 }
 
 export interface Transaction {
