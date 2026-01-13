@@ -2,21 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  startOfWeek, 
-  endOfWeek, 
-  isSameMonth, 
-  isSameDay, 
-  addMonths, 
-  subMonths, 
-  setMonth, 
-  setYear, 
-  getYear, 
-  getMonth 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  startOfWeek,
+  endOfWeek,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  setMonth,
+  setYear,
+  getYear,
+  getMonth
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
@@ -76,7 +76,7 @@ export default function Calendar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
-  
+
   const today = new Date();
 
   // トースト表示用のstate
@@ -241,6 +241,22 @@ export default function Calendar() {
                       </div>
                     );
                   })}
+                </div>
+                {/* Payday Highlight */}
+                <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginBottom: '2px' }}>
+                  {jobs.filter(j => j.payDay === day.getDate()).map(j => (
+                    <div
+                      key={j.id}
+                      title={`${j.name} 給料日`}
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: j.color,
+                        border: '1px solid rgba(0,0,0,0.1)'
+                      }}
+                    />
+                  ))}
                 </div>
                 {isCurrentMonth && (
                   <button className={styles.addButton}>
