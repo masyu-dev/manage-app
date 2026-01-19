@@ -13,6 +13,7 @@ export interface Job {
   hourlyWage: number;
   color: string;
   payDay?: number; // 1-31
+  closingDate?: number | null;
 }
 
 export interface Transaction {
