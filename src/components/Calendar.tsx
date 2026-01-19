@@ -2,27 +2,28 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  startOfWeek, 
-  endOfWeek, 
-  isSameMonth, 
-  isSameDay, 
-  addMonths, 
-  subMonths, 
-  setMonth, 
-  setYear, 
-  getYear, 
-  getMonth 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  startOfWeek,
+  endOfWeek,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  setMonth,
+  setYear,
+  getYear,
+  getMonth
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
-import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle } from 'lucide-react'; // アイコン追加
+import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle, LayoutGrid, LayoutList } from 'lucide-react'; // アイコン追加
 import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
+import VerticalCalendar from './VerticalCalendar';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // トーストの種類を定義
@@ -83,12 +84,13 @@ const variants = {
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { shifts, jobs } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
-  
+
   const today = new Date();
 
   // トースト管理（メッセージとタイプ）
@@ -153,7 +155,16 @@ export default function Calendar() {
   return (
     <div className={styles.calendarContainer}>
       <div className={styles.header}>
-        <button onClick={prevMonth} className="btn btn-outline"><ChevronLeft size={20} /></button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            className="btn btn-outline"
+            title={viewMode === 'grid' ? 'リスト表示' : 'グリッド表示'}
+          >
+            {viewMode === 'grid' ? <LayoutList size={20} /> : <LayoutGrid size={20} />}
+          </button>
+          <button onClick={prevMonth} className="btn btn-outline"><ChevronLeft size={20} /></button>
+        </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <select
@@ -196,7 +207,7 @@ export default function Calendar() {
 
       <AnimatePresence initial={false} custom={direction} mode="wait">
         <motion.div
-          key={page}
+          key={page + viewMode}
           custom={direction}
           variants={variants}
           initial="enter"
@@ -206,62 +217,74 @@ export default function Calendar() {
             x: { type: "spring", stiffness: 600, damping: 40 },
             opacity: { duration: 0.2 }
           }}
-          className={styles.grid}
+          className={viewMode === 'grid' ? styles.grid : ''}
         >
-          {['日', '月', '火', '水', '木', '金', '土'].map(day => (
-            <div key={day} className={styles.dayHeader}>{day}</div>
-          ))}
+          {viewMode === 'grid' ? (
+            <>
+              {['日', '月', '火', '水', '木', '金', '土'].map(day => (
+                <div key={day} className={styles.dayHeader}>{day}</div>
+              ))}
 
-          {calendarDays.map(day => {
-            const dayShifts = getShiftsForDay(day);
-            const isCurrentMonth = isSameMonth(day, monthStart);
-            const isSaturday = day.getDay() === 6;
-            const isSunday = day.getDay() === 0;
-            const isToday = isSameDay(day, today);
+              {calendarDays.map(day => {
+                const dayShifts = getShiftsForDay(day);
+                const isCurrentMonth = isSameMonth(day, monthStart);
+                const isSaturday = day.getDay() === 6;
+                const isSunday = day.getDay() === 0;
+                const isToday = isSameDay(day, today);
 
-            return (
-              <div
-                key={day.toString()}
-                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`}
-                onClick={() => handleDayClick(day)}
-              >
-                <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
-                <div className={styles.shiftList}>
-                  {dayShifts.map(shift => {
-                    const job = jobs.find(j => j.id === shift.jobId);
-                    const backgroundColor = job ? job.color : 'hsl(217, 91%, 60%)';
-                    return (
-                      <div
-                        key={shift.id}
-                        className={styles.shiftItem}
-                        style={{
-                          backgroundColor,
-                          color: '#fff',
-                          borderRadius: '12px',
-                          padding: '2px 8px',
-                          fontSize: '0.75rem',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          fontWeight: 'bold',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          marginBottom: '2px'
-                        }}
-                        onClick={(e) => handleShiftClick(e, shift)}
-                      >
-                        {job && <span style={{ marginRight: '4px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
-                        {shift.startTime}-{shift.endTime}
-                      </div>
-                    );
-                  })}
-                </div>
-                {isCurrentMonth && (
-                  <button className={styles.addButton}>
-                    <Plus size={16} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
+                return (
+                  <div
+                    key={day.toString()}
+                    className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`}
+                    onClick={() => handleDayClick(day)}
+                  >
+                    <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
+                    <div className={styles.shiftList}>
+                      {dayShifts.map(shift => {
+                        const job = jobs.find(j => j.id === shift.jobId);
+                        const backgroundColor = job ? job.color : 'hsl(217, 91%, 60%)';
+                        return (
+                          <div
+                            key={shift.id}
+                            className={styles.shiftItem}
+                            style={{
+                              backgroundColor,
+                              color: '#fff',
+                              borderRadius: '12px',
+                              padding: '2px 8px',
+                              fontSize: '0.75rem',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                              fontWeight: 'bold',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              marginBottom: '2px'
+                            }}
+                            onClick={(e) => handleShiftClick(e, shift)}
+                          >
+                            {job && <span style={{ marginRight: '4px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
+                            {shift.startTime}-{shift.endTime}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {isCurrentMonth && (
+                      <button className={styles.addButton}>
+                        <Plus size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <VerticalCalendar
+              currentDate={currentDate}
+              shifts={shifts}
+              jobs={jobs}
+              onDayClick={handleDayClick}
+              onShiftClick={handleShiftClick}
+            />
+          )}
         </motion.div>
       </AnimatePresence>
 
