@@ -1,0 +1,127 @@
+.backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+}
+
+.sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: hsl(var(--card));
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+    padding: 1.5rem;
+    /* Increase padding significantly to ensure button clears bottom bar/home indicator */
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+    z-index: 50;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.handle {
+    width: 48px;
+    height: 6px;
+    background-color: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+    margin: 0 auto 1.5rem;
+    cursor: grab;
+}
+
+.handle:active {
+    cursor: grabbing;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.dateTitle {
+    font-size: 1.5rem;
+    /* Slightly larger */
+    font-weight: bold;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    /* Increase gap slightly for breathing room */
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.icon {
+    color: hsl(var(--muted-foreground));
+}
+
+.jobChip {
+    display: inline-flex;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    color: white;
+    font-weight: bold;
+    font-size: 0.875rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.wageInfo {
+    margin-top: 0.5rem;
+    padding: 1rem;
+    /* Very light background for Better contrast/visibility */
+    background-color: #f3f4f6;
+    /* If using dark mode, might need adjustment, but user asked for "lighter" */
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Dark mode support for wageInfo */
+:global([data-theme='dark']) .wageInfo,
+:global([data-theme='dark-gray']) .wageInfo {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.wageLabel {
+    font-size: 0.8rem;
+    color: #6b7280;
+    /* Neutral gray text */
+    margin-bottom: 2px;
+}
+
+:global([data-theme='dark']) .wageLabel,
+:global([data-theme='dark-gray']) .wageLabel {
+    color: #9ca3af;
+}
+
+.wageAmount {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: hsl(var(--primary));
+}
+
+.actions {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+/* Dark mode adjustments explicitly if needed, but using css variables handles most */
