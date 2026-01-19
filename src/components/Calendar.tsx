@@ -24,10 +24,6 @@ import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle } fro
 import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
 import ShiftDetail from './ShiftDetail';
-<<<<<<< Updated upstream
-import { Shift } from '@/types';
-=======
->>>>>>> Stashed changes
 import { motion, AnimatePresence } from 'framer-motion';
 
 // トーストの種類を定義
@@ -94,13 +90,6 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
 
-<<<<<<< Updated upstream
-  // Shift Detail Sheet State (from shiftpage_OT)
-  const [viewingShift, setViewingShift] = useState<Shift | null>(null);
-
-  // Double-tap logic ref (from shiftpage_OT)
-=======
->>>>>>> Stashed changes
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const today = new Date();
@@ -117,7 +106,6 @@ export default function Calendar() {
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
   const paginate = (newDirection: number) => {
-    setViewingShift(null); // Dismiss detail view on navigation
     setPage([page + newDirection, newDirection]);
     setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
     setIsDetailModalOpen(false);
@@ -127,14 +115,12 @@ export default function Calendar() {
   const prevMonth = () => paginate(-1);
 
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setViewingShift(null); // Dismiss detail view
     const newYear = parseInt(e.target.value, 10);
     setCurrentDate(setYear(currentDate, newYear));
     setIsDetailModalOpen(false);
   };
 
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setViewingShift(null); // Dismiss detail view
     const newMonth = parseInt(e.target.value, 10);
     setCurrentDate(setMonth(currentDate, newMonth));
     setIsDetailModalOpen(false);
@@ -149,51 +135,17 @@ export default function Calendar() {
     return shifts.filter(shift => isSameDay(new Date(shift.date), date));
   };
 
-  // Click handler for empty cell (or cell background)
   const handleDayClick = (date: Date) => {
-    // If detail view is open, just close it and return (Dismiss action)
-    if (viewingShift) {
-      setViewingShift(null);
-      return;
-    }
-
     setSelectedDate(date);
     setSelectedShift(undefined);
     setIsModalOpen(true);
     setIsDetailModalOpen(false);
   };
 
-  // Click handler for Shift Item (Single vs Double Tap)
   const handleShiftClick = (e: React.MouseEvent, shift: any) => {
     e.stopPropagation();
 
     if (clickTimeoutRef.current) {
-<<<<<<< Updated upstream
-      // --- Double Tap Detected ---
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-
-      // Cancel viewing shift if it was about to open
-      setViewingShift(null);
-
-      // Open Edit Modal
-      setSelectedShift(shift);
-      setSelectedDate(new Date(shift.date));
-      setIsModalOpen(true);
-    } else {
-      // --- First Click (Potential Single Tap) ---
-      // Dismiss any currently open detail view first, if it's a different one
-      if (viewingShift && viewingShift.id !== shift.id) {
-        setViewingShift(null);
-      }
-
-      clickTimeoutRef.current = setTimeout(() => {
-        // --- Single Tap Confirmed ---
-        clickTimeoutRef.current = null;
-        setViewingShift(shift);
-      }, 300); // 300ms delay for better double-tap detection
-    }
-=======
       // Double Tap Detected -> Edit Mode
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
@@ -218,7 +170,6 @@ export default function Calendar() {
     setIsDetailModalOpen(false);
     setSelectedDate(new Date(selectedShift.date));
     setIsModalOpen(true);
->>>>>>> Stashed changes
   };
 
   const triggerToast = (msg: string, type: ToastType = 'success') => {
@@ -356,26 +307,6 @@ export default function Calendar() {
         />
       )}
 
-<<<<<<< Updated upstream
-      {/* 詳細表示 Bottom Sheet (from shiftpage_OT) */}
-      {viewingShift && (
-        <ShiftDetail
-          shift={viewingShift}
-          job={jobs.find(j => j.id === viewingShift.jobId)}
-          isOpen={!!viewingShift}
-          onClose={() => setViewingShift(null)}
-          onEdit={() => {
-            setViewingShift(null); // Close sheet
-            // Open edit modal directly
-            setSelectedShift(viewingShift);
-            setSelectedDate(new Date(viewingShift.date));
-            setIsModalOpen(true);
-          }}
-        />
-      )}
-
-      {/* タイプ付きトーストを表示 (from main) */}
-=======
       {/* Shift Detail Bottom Sheet */}
       <AnimatePresence>
         {isDetailModalOpen && selectedShift && (
@@ -389,7 +320,6 @@ export default function Calendar() {
       </AnimatePresence>
 
       {/* Toast */}
->>>>>>> Stashed changes
       {showToast && <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />}
     </div>
   );
