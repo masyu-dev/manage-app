@@ -35,6 +35,8 @@ export default function SalaryView() {
   const [newJobWage, setNewJobWage] = useState(userConfig.hourlyWage.toString());
   const [newJobColor, setNewJobColor] = useState(COLORS[0]);
   const [newJobPayDay, setNewJobPayDay] = useState('25');
+  const [newJobClosingDate, setNewJobClosingDate] = useState('31'); // デフォルト末日(31)
+  
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
@@ -42,7 +44,7 @@ export default function SalaryView() {
   const [hourlyWageInput, setHourlyWageInput] = useState(userConfig.hourlyWage.toString());
   const [nightWageInput, setNightWageInput] = useState(userConfig.nightWageMultiplier ? userConfig.nightWageMultiplier.toString() : '1.25');
 
-  // 新機能: 深夜手当の入力モード ('multiplier' = 倍率, 'amount' = 金額)
+  // 深夜手当の入力モード ('multiplier' = 倍率, 'amount' = 金額)
   const [nightWageMode, setNightWageMode] = useState<'multiplier' | 'amount'>('multiplier');
 
   // Sync from store
@@ -89,6 +91,7 @@ export default function SalaryView() {
         hourlyWage: Number(newJobWage),
         color: newJobColor,
         payDay: Number(newJobPayDay) || 25,
+        closingDate: Number(newJobClosingDate) || 31,
       };
 
       if (editingJobId) {
@@ -112,15 +115,17 @@ export default function SalaryView() {
     setNewJobWage(userConfig.hourlyWage.toString());
     setNewJobColor(COLORS[0]);
     setNewJobPayDay('25');
+    setNewJobClosingDate('31');
     setEditingJobId(null);
     setIsJobFormOpen(false);
   };
 
-  const handleEditJob = (job: any) => { // Use proper type if possible, imported from @/types
+  const handleEditJob = (job: any) => {
     setNewJobName(job.name);
     setNewJobWage(job.hourlyWage.toString());
     setNewJobColor(job.color);
     setNewJobPayDay(job.payDay ? job.payDay.toString() : '25');
+    setNewJobClosingDate(job.closingDate ? job.closingDate.toString() : '31');
     setEditingJobId(job.id);
     setIsJobFormOpen(true);
   };
@@ -139,7 +144,6 @@ export default function SalaryView() {
     }
   };
 
-  // 表示用の深夜時給金額を計算
   const currentNightAmount = Math.round(Number(hourlyWageInput) * Number(nightWageInput));
 
   return (
@@ -295,7 +299,6 @@ export default function SalaryView() {
                 </>
               )}
             </div>
-            {/* 補助テキスト */}
             <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem', textAlign: 'right' }}>
               {nightWageMode === 'multiplier'
                 ? `(時給換算: ¥${currentNightAmount.toLocaleString()})`
@@ -327,19 +330,37 @@ export default function SalaryView() {
               <label style={{ fontSize: '0.75rem' }}>時給</label>
               <input className="input" type="number" style={{ width: '100%' }} value={newJobWage} onChange={e => setNewJobWage(e.target.value)} />
             </div>
-            <div style={{ marginBottom: '0.5rem' }}>
-              <label style={{ fontSize: '0.75rem' }}>給料日 (日)</label>
-              <input
-                className="input"
-                type="number"
-                min="1"
-                max="31"
-                style={{ width: '100%' }}
-                value={newJobPayDay}
-                onChange={e => setNewJobPayDay(e.target.value)}
-                placeholder="25"
-              />
+            
+            {/* 給料日・締め日入力欄 (修正: どちらもinputに統一して完全に同じデザインにする) */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.75rem' }}>給料日 (日)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  max="31"
+                  style={{ width: '100%' }}
+                  value={newJobPayDay}
+                  onChange={e => setNewJobPayDay(e.target.value)}
+                  placeholder="25"
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '0.75rem' }}>締め日 (日)</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  max="31"
+                  style={{ width: '100%' }}
+                  value={newJobClosingDate}
+                  onChange={e => setNewJobClosingDate(e.target.value)}
+                  placeholder="31 (末日)"
+                />
+              </div>
             </div>
+
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ fontSize: '0.75rem' }}>カラー</label>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -371,9 +392,10 @@ export default function SalaryView() {
                 <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: job.color }}></div>
                 <div>
                   <div style={{ fontWeight: 'bold' }}>{job.name}</div>
-                  <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: '#666' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: '#666', flexWrap: 'wrap' }}>
                     <span>¥{job.hourlyWage.toLocaleString()} / h</span>
-                    {job.payDay && <span>給料日: {job.payDay}日</span>}
+                    {job.payDay && <span>給料: {job.payDay}日</span>}
+                    {job.closingDate && <span>(締: {job.closingDate === 31 ? '末' : job.closingDate}日)</span>}
                   </div>
                 </div>
               </div>
