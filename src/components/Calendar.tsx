@@ -239,6 +239,22 @@ export default function Calendar() {
                     onClick={() => handleDayClick(day)}
                   >
                     <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
+                    {/* Payday Highlight */}
+                    <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginBottom: '2px' }}>
+                      {jobs.filter(j => j.payDay === day.getDate()).map(j => (
+                        <div
+                          key={j.id}
+                          title={`${j.name} 給料日`}
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: j.color,
+                            border: '1px solid rgba(0,0,0,0.1)'
+                          }}
+                        />
+                      ))}
+                    </div>
                     <div className={styles.shiftList}>
                       {dayShifts.map(shift => {
                         const job = jobs.find(j => j.id === shift.jobId);

@@ -63,6 +63,24 @@ export default function VerticalCalendar({
               </div>
             </div>
             <div className={styles.shiftSection}>
+              {/* Payday Label */}
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: dayShifts.length > 0 ? '4px' : '0' }}>
+                {jobs.filter(j => j.payDay === day.getDate()).map(j => (
+                  <div
+                    key={j.id}
+                    style={{
+                      fontSize: '0.65rem',
+                      backgroundColor: j.color,
+                      color: '#fff',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    💰 {j.name} 給料日
+                  </div>
+                ))}
+              </div>
               {dayShifts.length > 0 ? (
                 dayShifts.map((shift) => {
                   const job = jobs.find((j) => j.id === shift.jobId);
