@@ -79,6 +79,8 @@ export default function SummaryView() {
     ? 'hsl(var(--warning))'
     : 'hsl(var(--success))';
 
+  const budgetDiff = userConfig.monthlyBudget - totalExpense;
+  const isOverBudget = budgetDiff < 0;
 
   const nextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
   const prevMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
@@ -142,48 +144,19 @@ return (
       </div>
 
       {!isSettingsOpen && (
-        <div style={{ marginTop: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-            <span>予算消化率</span>
-            <span>{Math.round(budgetProgress)}%</span>
-          </div>
-
           <div
             style={{
-              height: '10px',
-              backgroundColor: 'hsl(var(--background))',
-              borderRadius: '5px',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                width: `${budgetProgress}%`,
-                height: '100%',
-                backgroundColor: budgetColor,
-                transition: 'width 0.5s',
-              }}
-            />
-          </div>
-
-          <div style={{ textAlign: 'right', fontSize: '0.75rem', color: '#666', marginTop: '0.25rem' }}>
-            残り: ¥{Math.max(0, userConfig.monthlyBudget - totalExpense).toLocaleString()}
-          </div>
-
-          <div
-            style={{
+              marginTop: '1rem',
               display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: '0.875rem',
-              marginBottom: '0.25rem',
-            }}
-          >
-            <span>
-              貯金目標達成率
-            </span>
-            <span>{Math.round(savingsProgress)}%</span>
-          </div>
-
+              flexDirection: 'column',
+              gap: '1rem',
+            }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+              <span>予算消化率</span>
+              <span>{Math.round(budgetProgress)}%</span>
+            </div>
 
             <div
               style={{
@@ -193,14 +166,55 @@ return (
                 overflow: 'hidden',
               }}
             >
+              <div style={{ width: `${budgetProgress}%`,height: '100%', backgroundColor: budgetColor,transition: 'width 0.5s'}}
+              />
+            </div>
+          </div>
+
+          <div style={{textAlign: 'right',fontSize: '0.75rem',color: isOverBudget ? 'var(--danger)' : '#666',fontWeight: isOverBudget ? 'bold' : 'normal',}}>
+            {isOverBudget ? (
+              <>OVER ¥{Math.abs(budgetDiff).toLocaleString()}</>
+            ) : (
+              <>
+                残り ¥{budgetDiff.toLocaleString()}
+                {' / '}
+                ¥{userConfig.monthlyBudget.toLocaleString()}
+              </>
+            )}
+
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '0.875rem',
+                marginBottom: '0.25rem',
+              }}
+            >
+              <span>貯金目標達成率</span>
+              <span>{Math.round(savingsProgress)}%</span>
+            </div>
+
+
               <div
                 style={{
-                  width: `${savingsProgress}%`,
-                  height: '100%',
-                  backgroundColor: `hsl(${savingsColor})`,
-                  transition: 'width 0.5s',
+                  height: '10px',
+                  backgroundColor: 'hsl(var(--background))',
+                  borderRadius: '5px',
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                <div
+                  style={{
+                    width: `${savingsProgress}%`,
+                    height: '100%',
+                    backgroundColor: `hsl(${savingsColor})`,
+                    transition: 'width 0.5s',
+                  }}
+                />
+              </div>
             </div>
 
             <div
