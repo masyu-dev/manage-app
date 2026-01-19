@@ -2,43 +2,45 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  format, 
-  startOfMonth, 
-  endOfMonth, 
-  eachDayOfInterval, 
-  startOfWeek, 
-  endOfWeek, 
-  isSameMonth, 
-  isSameDay, 
-  addMonths, 
-  subMonths, 
-  setMonth, 
-  setYear, 
-  getYear, 
-  getMonth 
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  startOfWeek,
+  endOfWeek,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+  setMonth,
+  setYear,
+  getYear,
+  getMonth
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
-import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle } from 'lucide-react'; // アイコン追加
+import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle } from 'lucide-react';
 import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
 import ShiftDetail from './ShiftDetail';
+<<<<<<< Updated upstream
 import { Shift } from '@/types';
+=======
+>>>>>>> Stashed changes
 import { motion, AnimatePresence } from 'framer-motion';
 
 // トーストの種類を定義
 type ToastType = 'success' | 'error';
 
-// トーストコンポーネント（色とアイコンを出し分け）
+// トーストコンポーネント
 const Toast = ({ message, type, onClose }: { message: string; type: ToastType; onClose: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  // 背景色とアイコンの切り替え
-  const bgColor = type === 'error' ? '#ef4444' : '#333'; // エラーなら赤、通常は黒
+  const bgColor = type === 'error' ? '#ef4444' : '#333';
   const Icon = type === 'error' ? AlertCircle : CheckCircle;
 
   return createPortal(
@@ -88,18 +90,21 @@ export default function Calendar() {
   const { shifts, jobs } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
 
+<<<<<<< Updated upstream
   // Shift Detail Sheet State (from shiftpage_OT)
   const [viewingShift, setViewingShift] = useState<Shift | null>(null);
 
   // Double-tap logic ref (from shiftpage_OT)
+=======
+>>>>>>> Stashed changes
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const today = new Date();
 
-  // トースト管理（メッセージとタイプ）
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<ToastType>('success');
@@ -115,6 +120,7 @@ export default function Calendar() {
     setViewingShift(null); // Dismiss detail view on navigation
     setPage([page + newDirection, newDirection]);
     setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+    setIsDetailModalOpen(false);
   };
 
   const nextMonth = () => paginate(1);
@@ -124,12 +130,14 @@ export default function Calendar() {
     setViewingShift(null); // Dismiss detail view
     const newYear = parseInt(e.target.value, 10);
     setCurrentDate(setYear(currentDate, newYear));
+    setIsDetailModalOpen(false);
   };
 
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setViewingShift(null); // Dismiss detail view
     const newMonth = parseInt(e.target.value, 10);
     setCurrentDate(setMonth(currentDate, newMonth));
+    setIsDetailModalOpen(false);
   };
 
   const currentYear = getYear(currentDate);
@@ -152,6 +160,7 @@ export default function Calendar() {
     setSelectedDate(date);
     setSelectedShift(undefined);
     setIsModalOpen(true);
+    setIsDetailModalOpen(false);
   };
 
   // Click handler for Shift Item (Single vs Double Tap)
@@ -159,6 +168,7 @@ export default function Calendar() {
     e.stopPropagation();
 
     if (clickTimeoutRef.current) {
+<<<<<<< Updated upstream
       // --- Double Tap Detected ---
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
@@ -183,9 +193,34 @@ export default function Calendar() {
         setViewingShift(shift);
       }, 300); // 300ms delay for better double-tap detection
     }
+=======
+      // Double Tap Detected -> Edit Mode
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+
+      setSelectedShift(shift);
+      setSelectedDate(new Date(shift.date));
+      setIsDetailModalOpen(false);
+      setIsModalOpen(true);
+    } else {
+      // Single Tap -> Wait for potential second tap
+      clickTimeoutRef.current = setTimeout(() => {
+        clickTimeoutRef.current = null;
+
+        // Single Tap Confirmed -> Detail Mode
+        setSelectedShift(shift);
+        setIsDetailModalOpen(true);
+      }, 250);
+    }
   };
 
-  // トースト表示関数（タイプ指定可能に拡張）
+  const handleDetailEdit = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDate(new Date(selectedShift.date));
+    setIsModalOpen(true);
+>>>>>>> Stashed changes
+  };
+
   const triggerToast = (msg: string, type: ToastType = 'success') => {
     setToastMessage(msg);
     setToastType(type);
@@ -286,7 +321,9 @@ export default function Calendar() {
                           fontWeight: 'bold',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          marginBottom: '2px'
+                          marginBottom: '2px',
+                          cursor: 'pointer',
+                          userSelect: 'none'
                         }}
                         onClick={(e) => handleShiftClick(e, shift)}
                       >
@@ -307,6 +344,7 @@ export default function Calendar() {
         </motion.div>
       </AnimatePresence>
 
+      {/* Edit Form Modal */}
       {isModalOpen && (
         <ShiftForm
           initialDate={selectedDate}
@@ -314,10 +352,11 @@ export default function Calendar() {
           onClose={() => setIsModalOpen(false)}
           onSave={() => triggerToast('シフトを保存しました！', 'success')}
           onDelete={() => triggerToast('シフトを削除しました。', 'success')}
-          onToast={triggerToast} // 子コンポーネントに高機能なトースト関数を渡す
+          onToast={triggerToast}
         />
       )}
 
+<<<<<<< Updated upstream
       {/* 詳細表示 Bottom Sheet (from shiftpage_OT) */}
       {viewingShift && (
         <ShiftDetail
@@ -336,6 +375,21 @@ export default function Calendar() {
       )}
 
       {/* タイプ付きトーストを表示 (from main) */}
+=======
+      {/* Shift Detail Bottom Sheet */}
+      <AnimatePresence>
+        {isDetailModalOpen && selectedShift && (
+          <ShiftDetail
+            shift={selectedShift}
+            job={jobs.find(j => j.id === selectedShift.jobId)}
+            onClose={() => setIsDetailModalOpen(false)}
+            onEdit={handleDetailEdit}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Toast */}
+>>>>>>> Stashed changes
       {showToast && <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />}
     </div>
   );
