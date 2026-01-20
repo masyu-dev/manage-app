@@ -9,6 +9,13 @@ import styles from './Calendar.module.css'; // Reusing Calendar styles for consi
 import TransactionForm from './TransactionForm';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface BudgetCalendarProps {
+  currentDate: Date;
+  page: number;
+  direction: number;
+  onPaginate: (newDirection: number) => void;
+}
+
 const variants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 100 : -100,
@@ -26,9 +33,9 @@ const variants = {
   }),
 };
 
-export default function BudgetCalendar() {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [[page, direction], setPage] = useState([0, 0]);
+export default function BudgetCalendar({ currentDate, page, direction, onPaginate }: BudgetCalendarProps) {
+  //const [currentDate, setCurrentDate] = useState(new Date());
+  //const [[page, direction], setPage] = useState([0, 0]);
   const { transactions } = useApp();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -41,13 +48,13 @@ export default function BudgetCalendar() {
 
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-  const paginate = (newDirection: number) => {
+  /*const paginate = (newDirection: number) => {
     setPage([page + newDirection, newDirection]);
     setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
-  };
+  };*/
 
-  const nextMonth = () => paginate(1);
-  const prevMonth = () => paginate(-1);
+  const nextMonth = () => onPaginate(1);
+  const prevMonth = () => onPaginate(-1);
 
   const getTransactionsForDay = (date: Date) => {
     return transactions.filter(t => isSameDay(new Date(t.date), date));

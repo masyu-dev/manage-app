@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
-import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths, isBefore} from 'date-fns';
 import { calculateMonthlySalary } from '@/lib/calculations';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
@@ -50,6 +50,8 @@ const {
   useEffect(() => {
     if (!userConfig.fixedCosts?.length) return;
 
+    if (isBefore(startOfMonth(currentDate), startOfMonth(new Date()))) return;
+    
     // 現在表示されている月の「年-月」 (例: "2024-05")
     const monthStr = format(currentDate, 'yyyy-MM');
 
@@ -184,9 +186,11 @@ const {
     ],
   };
 
+  // 月移動の関数を addMonths を使う形式に修正（カレンダーと動きを合わせるため）
   const paginate = (newDirection: number) => {
     setPage([page + newDirection, newDirection]);
-    setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + (newDirection > 0 ? 1 : -1))));
+    // 直接 setMonth せず、addMonths を使用して新しい日付をセットする
+    setCurrentDate(addMonths(currentDate, newDirection));
   };
 
   const nextMonth = () => paginate(1);
@@ -369,7 +373,12 @@ const {
         )}
       </div>
 
-      <BudgetCalendar />
+      <BudgetCalendar 
+        currentDate={currentDate} 
+        page={page} 
+        direction={direction} 
+        onPaginate={paginate} 
+      />
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
