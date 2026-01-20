@@ -14,7 +14,8 @@ interface ShiftFormProps {
   onClose: () => void;
   onSave?: () => void;
   onDelete?: () => void;
-  onToast?: (msg: string) => void;
+  // onToastの型定義を拡張（第2引数でタイプを受け取れるように）
+  onToast?: (msg: string, type?: 'success' | 'error') => void;
 }
 
 export default function ShiftForm({ initialDate, existingShift, onClose, onSave, onDelete, onToast }: ShiftFormProps) {
@@ -29,27 +30,23 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   const [showProfileSave, setShowProfileSave] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // 休憩時間ピッカーの開閉状態
-  const [isBreakPickerOpen, setIsBreakPickerOpen] = useState(false);
+  // シェイクアニメーション用State
+  const [isShaking, setIsShaking] = useState(false);
 
-  // 現在の時間・分
+  const [isBreakPickerOpen, setIsBreakPickerOpen] = useState(false);
   const breakHours = Math.floor(breakTime / 60);
   const breakMinutes = breakTime % 60;
-
-  // 選択肢（0時間〜5時間、0分〜59分）
-  const hourOptions = Array.from({ length: 6 }, (_, i) => i);
-  const minuteOptions = Array.from({ length: 60 }, (_, i) => i);
+  const hourOptions = [0, 1, 2];
+  const minuteOptions = [0, 15, 30, 45];
 
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
   }, []);
 
-  // 自動スクロール用のRef
   const hoursRef = useRef<HTMLDivElement>(null);
   const minutesRef = useRef<HTMLDivElement>(null);
 
-  // ピッカーが開いたときに、現在の選択位置までスクロールする
   useEffect(() => {
     if (isBreakPickerOpen) {
       if (hoursRef.current) {
@@ -67,8 +64,41 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     }
   }, [isBreakPickerOpen]);
 
+  // Simple UUID v4 generator fallback
+  const generateId = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  // エラー時の演出実行関数
+  const triggerErrorEffect = (msg: string) => {
+    // 1. 赤色トースト表示
+    if (onToast) {
+      onToast(msg, 'error');
+    } else {
+      alert(msg);
+    }
+
+    // 2. フォームを揺らす
+    setIsShaking(true);
+    setTimeout(() => setIsShaking(false), 500); // 0.5秒後に揺れを止める
+
+    // 3. スマホを振動させる（Android等対応機種のみ）
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(200); // 200ms振動
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // ★バリデーション：終了時間が開始時間より前ならエラー
+    if (startTime >= endTime) {
+      triggerErrorEffect('終了時間は開始時間より後に設定してください');
+      return;
+    }
 
     let currentWage = userConfig.hourlyWage;
     if (jobId) {
@@ -81,7 +111,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     }
 
     const shiftData: Shift = {
-      id: existingShift?.id || crypto.randomUUID(),
+      id: existingShift?.id || generateId(),
       date,
       startTime,
       endTime,
@@ -95,7 +125,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     } else {
       addShift(shiftData);
     }
-    
+
     if (onSave) onSave();
     onClose();
   };
@@ -103,7 +133,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   const handleSaveProfile = () => {
     if (!profileName) return;
     addShiftProfile({
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: profileName,
       startTime,
       endTime,
@@ -114,7 +144,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     setProfileName('');
     
     if (onToast) {
-      onToast('テンプレートを保存しました');
+      onToast('テンプレートを保存しました', 'success');
     } else {
       alert('テンプレートを保存しました');
     }
@@ -142,17 +172,34 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
 
   return createPortal(
     <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
-      <div className={styles.modal}>
+      <div 
+        className={`${styles.modal} ${isShaking ? styles.shake : ''}`} // シェイク用のクラスを適用
+        style={{
+          // シェイクアニメーションの定義（インラインスタイルで簡易実装）
+          animation: isShaking ? 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both' : 'none',
+          transform: 'translate3d(0, 0, 0)'
+        }}
+      >
+        {/* CSSアニメーション用のstyleタグ埋め込み */}
+        <style>{`
+          @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+          }
+        `}</style>
+
         <div className={styles.header}>
           <button type="button" onClick={onClose} className="btn btn-ghost" style={{ padding: 0 }}>
             <X size={24} />
           </button>
           <h3>{existingShift ? 'シフト編集' : 'シフト追加'}</h3>
-          <div style={{ width: 24 }}></div> 
+          <div style={{ width: 24 }}></div>
         </div>
 
         <form id="shift-form" onSubmit={handleSubmit} className={styles.form}>
-          
+
           {shiftProfiles.length > 0 && (
             <div className={styles.formGroup}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -225,7 +272,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             </div>
           </div>
 
-          {/* 休憩時間のUI：シフトボード風ドラムロール */}
           <div className={styles.formGroup}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Watch size={16} /> 休憩時間
@@ -235,10 +281,10 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             <div 
               className="input" 
               onClick={() => setIsBreakPickerOpen(!isBreakPickerOpen)}
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 cursor: 'pointer',
                 backgroundColor: isBreakPickerOpen ? '#f0f9ff' : '#fff',
                 borderColor: isBreakPickerOpen ? 'hsl(var(--primary))' : 'var(--border)',
@@ -246,16 +292,15 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
               }}
             >
               <span style={{ fontSize: '1rem' }}>
-                {breakTime === 0 ? '未設定 (0分)' : `${breakHours}時間 ${breakMinutes}分`}
+                {breakTime === 0 ? 'なし' : `${breakHours}時間 ${breakMinutes}分`}
               </span>
-              <ChevronDown size={16} style={{ 
+              <ChevronDown size={16} style={{
                 transform: isBreakPickerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s',
                 color: '#666'
               }} />
             </div>
 
-            {/* 2. 展開するドラムロール（決定ボタンなし・即反映） */}
             {isBreakPickerOpen && (
               <div style={{ 
                 marginTop: '0px', // 入力欄とくっつける
@@ -269,7 +314,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                 animation: 'slideDown 0.2s ease-out',
                 position: 'relative'
               }}>
-                {/* 選択中の強調ライン（背景の薄い帯） */}
                 <div style={{
                   position: 'absolute',
                   top: '50%',
@@ -280,7 +324,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                   backgroundColor: '#f0f9ff',
                   borderTop: '1px solid #e0f2fe',
                   borderBottom: '1px solid #e0f2fe',
-                  pointerEvents: 'none', // クリックを透過させる
+                  pointerEvents: 'none',
                   zIndex: 0
                 }}></div>
 
@@ -288,48 +332,48 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                   {/* 時間の列 */}
                   <div 
                     ref={hoursRef}
-                    style={{ 
-                      flex: 1, 
-                      overflowY: 'auto', 
-                      scrollbarWidth: 'none', 
+                    style={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      scrollbarWidth: 'none',
                       msOverflowStyle: 'none',
                       position: 'relative',
                       zIndex: 1,
-                      scrollSnapType: 'y mandatory' // スナップ効果
+                      scrollSnapType: 'y mandatory'
                     }}
                   >
-                    <div style={{ height: '70px' }}></div> {/* 上の余白 */}
+                    <div style={{ height: '70px' }}></div>
                     {hourOptions.map(h => (
-                      <div 
+                      <div
                         key={h}
                         data-value={h}
                         onClick={() => setBreakTime(h * 60 + breakMinutes)}
-                        style={{ 
-                          height: '40px', 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        style={{
+                          height: '40px',
+                          display: 'flex',
+                          alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
                           color: breakHours === h ? 'hsl(var(--primary))' : '#999',
                           fontWeight: breakHours === h ? 'bold' : 'normal',
                           fontSize: breakHours === h ? '1.1rem' : '1rem',
                           transition: 'all 0.2s',
-                          scrollSnapAlign: 'center' // 中央にスナップ
+                          scrollSnapAlign: 'center'
                         }}
                       >
                         {h}時間
                       </div>
                     ))}
-                    <div style={{ height: '70px' }}></div> {/* 下の余白 */}
+                    <div style={{ height: '70px' }}></div>
                   </div>
 
                   {/* 分の列 */}
                   <div 
                     ref={minutesRef}
-                    style={{ 
-                      flex: 1, 
-                      overflowY: 'auto', 
-                      scrollbarWidth: 'none', 
+                    style={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      scrollbarWidth: 'none',
                       msOverflowStyle: 'none',
                       position: 'relative',
                       zIndex: 1,
@@ -339,14 +383,14 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                   >
                     <div style={{ height: '70px' }}></div>
                     {minuteOptions.map(m => (
-                      <div 
+                      <div
                         key={m}
                         data-value={m}
                         onClick={() => setBreakTime(breakHours * 60 + m)}
-                        style={{ 
-                          height: '40px', 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        style={{
+                          height: '40px',
+                          display: 'flex',
+                          alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
                           color: breakMinutes === m ? 'hsl(var(--primary))' : '#999',
@@ -391,7 +435,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               <Save size={20} /> 保存する
             </button>
-            
+
             {existingShift && (
               <button type="button" onClick={handleDelete} className="btn btn-ghost" style={{ width: '100%', color: 'var(--danger)', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Trash2 size={16} /> このシフトを削除

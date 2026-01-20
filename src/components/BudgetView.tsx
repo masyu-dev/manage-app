@@ -30,14 +30,14 @@ const variants = {
 };
 
 export default function BudgetView() {
-const { 
-    transactions, 
-    tags, 
-    addTag, 
-    deleteTag, 
-    deleteTransaction, 
-    userConfig, 
-    shifts, 
+  const {
+    transactions,
+    tags,
+    addTag,
+    deleteTag,
+    deleteTransaction,
+    userConfig,
+    shifts,
     addTransaction,   // feature-HAC_Subsc で必要
     updateUserConfig, // feature-HAC_Subsc で必要
     jobs              // main で必要
@@ -46,44 +46,98 @@ const {
   const [[page, direction], setPage] = useState([0, 0]);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // --- 39行目 〜 67行目を以下に書き換え ---
-  useEffect(() => {
-    if (!userConfig.fixedCosts?.length) return;
-
+useEffect(() => {
+    // ガード句: 過去の月（今月より前）を表示している場合は自動追加処理を行わない
     if (isBefore(startOfMonth(currentDate), startOfMonth(new Date()))) return;
-    
-    // 現在表示されている月の「年-月」 (例: "2024-05")
+
     const monthStr = format(currentDate, 'yyyy-MM');
 
-    userConfig.fixedCosts.forEach(cost => {
-      const fixedDescription = `${cost.name} (固定費)`;
+    // 1. 固定費の自動追加
+    if (userConfig.fixedCosts?.length) {
+      userConfig.fixedCosts.forEach(cost => {
+        const fixedDescription = `${cost.name} (固定費)`;
 
-      // 重複チェック：今月の履歴に「同じ説明文」のデータがあるか判定
-      const isAlreadyAdded = transactions.some(t => 
-        t.date.startsWith(monthStr) && t.description === fixedDescription
-      );
+        // 重複チェック
+        const isAlreadyAdded = transactions.some(t => 
+          t.date.startsWith(monthStr) && t.description === fixedDescription
+        );
 
-      if (!isAlreadyAdded) {
-        const dayStr = String(cost.day).padStart(2, '0');
-        addTransaction({
-          id: crypto.randomUUID(),
-          date: `${monthStr}-${dayStr}`,
-          amount: cost.amount,
-          type: 'expense',
-          tagId: cost.tagId,
-          description: fixedDescription,
-        });
-      }
-    });
-    // 重要な修正：transactions そのものではなく .length を監視することでループを防ぎます
-  }, [currentDate, userConfig.fixedCosts, transactions.length]);
+        if (!isAlreadyAdded) {
+          const dayStr = String(cost.day).padStart(2, '0');
+          addTransaction({
+            id: crypto.randomUUID(),
+            date: `${monthStr}-${dayStr}`,
+            amount: cost.amount,
+            type: 'expense',
+            tagId: cost.tagId,
+            description: fixedDescription,
+          });
+        }
+      });
+    }
+
+    // 2. 給与(予定)の自動追加 (mainブランチの機能)
+    if (jobs.length) {
+      const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+      // '給料'タグを探す、なければデフォルトIDなど
+      const salaryTag = tags.find(t => t.name === '給料' && t.type === 'income')?.id || '3';
+
+      jobs.forEach(job => {
+        const salaryDescription = `給与: ${job.name} (予定)`;
+        const isAlreadyAdded = transactions.some(t =>
+          t.date.startsWith(monthStr) && t.description === salaryDescription
+        );
+
+        if (!isAlreadyAdded) {
+          // 前月のシフトを取得
+          const jobShifts = shifts.filter(s => {
+            const d = new Date(s.date);
+            return s.jobId === job.id &&
+              d.getFullYear() === prevMonthDate.getFullYear() &&
+              d.getMonth() === prevMonthDate.getMonth();
+          });
+
+          // 給与計算
+          const jobSalary = calculateMonthlySalary(jobShifts, prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, userConfig.nightWageMultiplier);
+
+          if (jobSalary > 0) {
+            const payDay = job.payDay || 25;
+            // 月末補正（例: 2月30日がない場合などへの対応は new Date 側で吸収されるが、ここでは単純に日付文字列生成）
+            const dayStr = String(Math.min(payDay, endOfMonth(currentDate).getDate())).padStart(2, '0');
+            
+            addTransaction({
+              id: crypto.randomUUID(),
+              date: `${monthStr}-${dayStr}`,
+              amount: jobSalary,
+              type: 'income',
+              tagId: salaryTag,
+              description: salaryDescription,
+            });
+          }
+        }
+      });
+    }
+
+    // 依存配列の統合:
+    // transactions.length を監視することでループを防ぎつつ(feature由来)、
+    // 給与計算に必要な jobs, shifts 等も監視対象に含める(main由来)
+  }, [
+    currentDate, 
+    userConfig.fixedCosts, 
+    userConfig.nightWageMultiplier,
+    transactions.length, // 重要: transactionsそのものではなくlengthを監視
+    jobs, 
+    shifts, 
+    tags, 
+    addTransaction
+  ]);
 
   // Tag Form State
   const [isTagFormOpen, setIsTagFormOpen] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
 
-// --- 固定費設定用のステート ---
+  // --- 固定費設定用のステート ---
   const [isFixedSettingsOpen, setIsFixedSettingsOpen] = useState(false);
   const [newFixedName, setNewFixedName] = useState('');
   const [newFixedAmount, setNewFixedAmount] = useState('');
@@ -112,49 +166,11 @@ const {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
 
-  // Calculate Scheduled Salary per Job
-  const scheduledSalaries = jobs.map(job => {
-    const payDay = job.payDay || 25; // Default to 25 if not set
-    const payDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), Math.min(payDay, endOfMonth(currentDate).getDate()));
-
-    // Logic: Salary for month M is usually paid in month M+1 or M. 
-    // Assuming standard "paid next month" for now, or use previous month's shifts.
-    // Let's assume the payday in THIS month pays for LAST month's shifts.
-    const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-
-    // Filter shifts for this job in the previous month
-    const jobShifts = shifts.filter(s => {
-      const d = new Date(s.date);
-      return s.jobId === job.id &&
-        d.getFullYear() === prevMonthDate.getFullYear() &&
-        d.getMonth() === prevMonthDate.getMonth();
-    });
-
-    const jobSalary = calculateMonthlySalary(jobShifts, prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, userConfig.nightWageMultiplier); // Assuming this helper works with filtered shifts
-
-    if (jobSalary === 0) return null;
-
-    return {
-      id: `salary-${job.id}`,
-      date: payDate.toISOString().split('T')[0],
-      amount: jobSalary,
-      type: 'income' as const,
-      tagId: 'salary', // Virtual tag
-      description: `給与予定 (${job.name})`,
-      isVirtual: true,
-      jobColor: job.color, // Helper to color code
-    };
-  }).filter(Boolean) as any[]; // Type cast for custom props
-
-  // Fallback for default job/shifts without job ID if needed, but we encourage using jobs now.
-  // If there are shifts without jobId, we might need a "General" salary entry using global settings?
-  // For simplicity, let's assume we proceed with job-based.
-
   const rawTransactions = transactions.filter(t =>
     isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
   );
 
-  const currentMonthTransactions = [...rawTransactions, ...scheduledSalaries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const currentMonthTransactions = [...rawTransactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const income = currentMonthTransactions
     .filter(t => t.type === 'income')
@@ -294,7 +310,7 @@ const {
         </div>
       </div>
 
-{/* --- カレンダーの直前に挿入 --- */}
+      {/* --- カレンダーの直前に挿入 --- */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ fontSize: '1rem' }}>固定費の自動入力設定</h3>
@@ -313,7 +329,7 @@ const {
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <select className="input" value={newFixedDay} onChange={e => setNewFixedDay(e.target.value)} style={{ flex: 1 }}>
-                  {[...Array(31)].map((_, i) => <option key={i+1} value={i+1}>{i+1}日</option>)}
+                  {[...Array(31)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}日</option>)}
                 </select>
                 <select className="input" value={newFixedTagId} onChange={e => setNewFixedTagId(e.target.value)} style={{ flex: 2 }}>
                   <option value="" disabled>カテゴリ</option>
@@ -326,27 +342,27 @@ const {
                 }}>追加</button>
               </div>
             </div>
-            
+
             {/* 登録済みリスト */}
             <div style={{ borderTop: '1px solid #ddd', paddingTop: '0.5rem' }}>
               {userConfig.fixedCosts?.map(cost => (
-                <div 
-                  key={cost.id} 
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                <div
+                  key={cost.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center', // 垂直方向の中央揃え
-                    fontSize: '0.8rem', 
-                    padding: '0.4rem 0', 
-                    borderBottom: '1px solid #eee' 
+                    fontSize: '0.8rem',
+                    padding: '0.4rem 0',
+                    borderBottom: '1px solid #eee'
                   }}
                 >
                   <span>{cost.day}日: {cost.name} (¥{cost.amount.toLocaleString()})</span>
-                  
+
                   {/* 丸みを帯びた四角い枠の削除ボタン */}
-                  <button 
-                    onClick={() => updateUserConfig({ fixedCosts: userConfig.fixedCosts.filter(c => c.id !== cost.id) })} 
-                    style={{ 
+                  <button
+                    onClick={() => updateUserConfig({ fixedCosts: userConfig.fixedCosts.filter(c => c.id !== cost.id) })}
+                    style={{
                       color: '#dc2626',                  // 直接的な赤色指定
                       border: '1px solid #dc2626',       // 直接的な赤色指定
                       borderRadius: '6px',
@@ -413,7 +429,7 @@ const {
                       backgroundColor: isVirtual ? 'gold' : (tag?.color || '#ccc')
                     }}></div>
                     <div>
-                      <div style={{ fontSize: '0.875rem' }}>{isVirtual ? '給与(予定)' : (tag?.name || '不明')}</div>
+                      <div style={{ fontSize: '0.875rem' }}>{tag?.name || '不明'}</div>
                       <div style={{ fontSize: '0.75rem', color: '#666' }}>{format(new Date(t.date), 'M/d')} {t.description}</div>
                     </div>
                   </div>
@@ -424,7 +440,7 @@ const {
                     }}>
                       {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
                     </div>
-                    {!isVirtual && (
+                    {true && (
                       <button
                         onClick={() => deleteTransaction(t.id)}
                         style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}

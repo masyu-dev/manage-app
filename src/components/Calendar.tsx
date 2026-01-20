@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   format,
@@ -20,31 +20,45 @@ import {
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
-import { ChevronLeft, ChevronRight, Plus, Share2 } from 'lucide-react';
+
+import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle, LayoutGrid, LayoutList } from 'lucide-react';
 import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
+import VerticalCalendar from './VerticalCalendar';
+import ShiftDetail from './ShiftDetail';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// トーストの種類を定義
+type ToastType = 'success' | 'error';
+
 // トーストコンポーネント
-const Toast = ({ message, onClose }: { message: string; onClose: () => void }) => {
+const Toast = ({ message, type, onClose }: { message: string; type: ToastType; onClose: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
+
+  const bgColor = type === 'error' ? '#ef4444' : '#333';
+  const Icon = type === 'error' ? AlertCircle : CheckCircle;
 
   return createPortal(
     <div style={{
       position: 'fixed',
       bottom: '24px',
       right: '24px',
-      backgroundColor: '#333',
+      backgroundColor: bgColor,
       color: '#fff',
       padding: '12px 24px',
       borderRadius: '8px',
       zIndex: 9999,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-      animation: 'fadeIn 0.3s ease-out'
+      boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+      animation: 'fadeIn 0.3s ease-out',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontWeight: 'bold'
     }}>
+      <Icon size={20} />
       {message}
     </div>,
     document.body
@@ -71,17 +85,21 @@ const variants = {
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { shifts, jobs } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
 
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const today = new Date();
 
-  // トースト表示用のstate
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<ToastType>('success');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -93,25 +111,27 @@ export default function Calendar() {
   const paginate = (newDirection: number) => {
     setPage([page + newDirection, newDirection]);
     setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+    setIsDetailModalOpen(false);
   };
 
   const nextMonth = () => paginate(1);
   const prevMonth = () => paginate(-1);
 
-  // 年月選択用のハンドラ
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newYear = parseInt(e.target.value, 10);
     setCurrentDate(setYear(currentDate, newYear));
+    setIsDetailModalOpen(false);
   };
 
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newMonth = parseInt(e.target.value, 10);
     setCurrentDate(setMonth(currentDate, newMonth));
+    setIsDetailModalOpen(false);
   };
 
   const currentYear = getYear(currentDate);
   const currentMonth = getMonth(currentDate);
-  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i); // +/- 5 years
+  const years = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
   const months = Array.from({ length: 12 }, (_, i) => i);
 
   const getShiftsForDay = (date: Date) => {
@@ -122,27 +142,59 @@ export default function Calendar() {
     setSelectedDate(date);
     setSelectedShift(undefined);
     setIsModalOpen(true);
+    setIsDetailModalOpen(false);
   };
 
   const handleShiftClick = (e: React.MouseEvent, shift: any) => {
     e.stopPropagation();
-    setSelectedShift(shift);
-    setSelectedDate(new Date(shift.date));
+
+    if (clickTimeoutRef.current) {
+      // Double Tap Detected -> Edit Mode
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+
+      setSelectedShift(shift);
+      setSelectedDate(new Date(shift.date));
+      setIsDetailModalOpen(false);
+      setIsModalOpen(true);
+    } else {
+      // Single Tap -> Wait for potential second tap
+      clickTimeoutRef.current = setTimeout(() => {
+        clickTimeoutRef.current = null;
+
+        // Single Tap Confirmed -> Detail Mode
+        setSelectedShift(shift);
+        setIsDetailModalOpen(true);
+      }, 250);
+    }
+  };
+
+  const handleDetailEdit = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDate(new Date(selectedShift.date));
     setIsModalOpen(true);
   };
 
-  // トースト表示用の関数
-  const triggerToast = (msg: string) => {
+  const triggerToast = (msg: string, type: ToastType = 'success') => {
     setToastMessage(msg);
+    setToastType(type);
     setShowToast(true);
   };
 
   return (
     <div className={styles.calendarContainer}>
       <div className={styles.header}>
-        <button onClick={prevMonth} className="btn btn-outline"><ChevronLeft size={20} /></button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            className="btn btn-outline"
+            title={viewMode === 'grid' ? 'リスト表示' : 'グリッド表示'}
+          >
+            {viewMode === 'grid' ? <LayoutList size={20} /> : <LayoutGrid size={20} />}
+          </button>
+          <button onClick={prevMonth} className="btn btn-outline"><ChevronLeft size={20} /></button>
+        </div>
 
-        {/* 年月選択ドロップダウン */}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <select
             value={currentYear}
@@ -184,7 +236,7 @@ export default function Calendar() {
 
       <AnimatePresence initial={false} custom={direction} mode="wait">
         <motion.div
-          key={page}
+          key={page + viewMode}
           custom={direction}
           variants={variants}
           initial="enter"
@@ -194,95 +246,121 @@ export default function Calendar() {
             x: { type: "spring", stiffness: 600, damping: 40 },
             opacity: { duration: 0.2 }
           }}
-          className={styles.grid}
+          className={viewMode === 'grid' ? styles.grid : ''}
         >
-          {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => (
-            <div key={day} className={`${styles.dayHeader} ${index === 0 ? styles.sunday : index === 6 ? styles.saturday : ''}`}>{day}</div>
-          ))}
+          {viewMode === 'grid' ? (
+            <>
+              {['日', '月', '火', '水', '木', '金', '土'].map(day => (
+                <div key={day} className={styles.dayHeader}>{day}</div>
+              ))}
 
-          {calendarDays.map(day => {
-            const dayShifts = getShiftsForDay(day);
-            const isCurrentMonth = isSameMonth(day, monthStart);
-            const isSaturday = day.getDay() === 6;
-            const isSunday = day.getDay() === 0;
-            const isToday = isSameDay(day, today);
+              {calendarDays.map(day => {
+                const dayShifts = getShiftsForDay(day);
+                const isCurrentMonth = isSameMonth(day, monthStart);
+                const isSaturday = day.getDay() === 6;
+                const isSunday = day.getDay() === 0;
+                const isToday = isSameDay(day, today);
 
-            return (
-              <div
-                key={day.toString()}
-                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`}
-                onClick={() => handleDayClick(day)}
-              >
-                <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
-                <div className={styles.shiftList}>
-                  {dayShifts.map(shift => {
-                    const job = jobs.find(j => j.id === shift.jobId);
-                    const backgroundColor = job ? job.color : 'hsl(217, 91%, 60%)';
-                    return (
-                      <div
-                        key={shift.id}
-                        className={styles.shiftItem}
-                        style={{
-                          backgroundColor,
-                          color: '#fff',
-                          borderRadius: '12px',
-                          padding: '2px 8px',
-                          fontSize: '0.75rem',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          fontWeight: 'bold',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          marginBottom: '2px'
-                        }}
-                        onClick={(e) => handleShiftClick(e, shift)}
-                      >
-                        {job && <span style={{ marginRight: '4px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
-                        {shift.startTime}-{shift.endTime}
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Payday Highlight */}
-                <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginBottom: '2px' }}>
-                  {jobs.filter(j => j.payDay === day.getDate()).map(j => (
-                    <div
-                      key={j.id}
-                      title={`${j.name} 給料日`}
-                      style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        backgroundColor: j.color,
-                        border: '1px solid rgba(0,0,0,0.1)'
-                      }}
-                    />
-                  ))}
-                </div>
-                {isCurrentMonth && (
-                  <button className={styles.addButton}>
-                    <Plus size={16} />
-                  </button>
-                )}
-              </div>
-            );
-          })}
+                return (
+                  <div
+                    key={day.toString()}
+                    className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`}
+                    onClick={() => handleDayClick(day)}
+                  >
+                    <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
+                    
+                    {/* Payday Highlight */}
+                    <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginBottom: '2px' }}>
+                      {jobs.filter(j => j.payDay === day.getDate()).map(j => (
+                        <div
+                          key={j.id}
+                          title={`${j.name} 給料日`}
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: j.color,
+                            border: '1px solid rgba(0,0,0,0.1)'
+                          }}
+                        />
+                      ))}
+                    </div>
+
+                    <div className={styles.shiftList}>
+                      {dayShifts.map(shift => {
+                        const job = jobs.find(j => j.id === shift.jobId);
+                        const backgroundColor = job ? job.color : 'hsl(217, 91%, 60%)';
+                        return (
+                          <div
+                            key={shift.id}
+                            className={styles.shiftItem}
+                            style={{
+                              backgroundColor,
+                              color: '#fff',
+                              borderRadius: '12px',
+                              padding: '2px 8px',
+                              fontSize: '0.75rem',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                              fontWeight: 'bold',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              marginBottom: '2px'
+                            }}
+                            onClick={(e) => handleShiftClick(e, shift)}
+                          >
+                            {job && <span style={{ marginRight: '4px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
+                            {shift.startTime}-{shift.endTime}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {isCurrentMonth && (
+                      <button className={styles.addButton}>
+                        <Plus size={16} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <VerticalCalendar
+              currentDate={currentDate}
+              shifts={shifts}
+              jobs={jobs}
+              onDayClick={handleDayClick}
+              onShiftClick={handleShiftClick}
+            />
+          )}
         </motion.div>
       </AnimatePresence>
 
-      {/* ShiftFormにトースト関連のPropsを渡す */}
+      {/* Edit Form Modal */}
       {isModalOpen && (
         <ShiftForm
           initialDate={selectedDate}
           existingShift={selectedShift}
           onClose={() => setIsModalOpen(false)}
-          onSave={() => triggerToast('シフトを保存しました！')}
-          onDelete={() => triggerToast('シフトを削除しました。')}
+          onSave={() => triggerToast('シフトを保存しました！', 'success')}
+          onDelete={() => triggerToast('シフトを削除しました。', 'success')}
           onToast={triggerToast}
         />
       )}
 
-      {/* トースト表示 */}
-      {showToast && <Toast message={toastMessage} onClose={() => setShowToast(false)} />}
+      {/* Shift Detail Bottom Sheet */}
+      <AnimatePresence>
+        {isDetailModalOpen && selectedShift && (
+          <ShiftDetail
+            shift={selectedShift}
+            job={jobs.find(j => j.id === selectedShift.jobId)}
+            onClose={() => setIsDetailModalOpen(false)}
+            onEdit={handleDetailEdit}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Toast */}
+      {showToast && <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />}
     </div>
   );
 }

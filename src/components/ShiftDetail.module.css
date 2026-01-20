@@ -1,0 +1,163 @@
+.shiftDetailOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+.shiftDetailSheet {
+    background-color: #fff;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    width: 100%;
+    max-width: 600px;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    max-height: 85vh;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+.dragHandleArea {
+    width: 100%;
+    padding: 12px 0;
+    display: flex;
+    justify-content: center;
+    cursor: grab;
+    touch-action: none;
+}
+
+.dragHandle {
+    width: 40px;
+    height: 4px;
+    background-color: #e0e0e0;
+    border-radius: 2px;
+}
+
+.content {
+    padding: 0 24px 24px;
+    overflow-y: auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.dateTitle {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.closeButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.closeButton:hover {
+    background-color: #f5f5f5;
+}
+
+.infoRow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    font-size: 1rem;
+    color: #444;
+}
+
+.iconWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background-color: #f0f9ff;
+    color: #0284c7;
+}
+
+.infoLabel {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 2px;
+}
+
+.infoValue {
+    font-weight: 500;
+    color: #333;
+}
+
+.wageInfo {
+    background-color: #f8fafc;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+.wageRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.wageRow:last-child {
+    margin-bottom: 0;
+}
+
+.wageLabel {
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.wageValue {
+    font-weight: 600;
+    color: #475569;
+}
+
+.actionButton {
+    width: 100%;
+    padding: 16px;
+    background-color: #0284c7;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.actionButton:hover {
+    background-color: #0369a1;
+}
+
+.actionButton:active {
+    transform: scale(0.98);
+}
