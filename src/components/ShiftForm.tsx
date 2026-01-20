@@ -5,7 +5,8 @@ import { useApp } from '@/lib/store';
 import { Shift } from '@/types';
 import { format } from 'date-fns';
 import { createPortal } from 'react-dom';
-import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X, Watch, ChevronDown } from 'lucide-react';
+import { calculateShiftSalary } from '@/lib/calculations';
+import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X, Watch, ChevronDown, Coins } from 'lucide-react';
 import styles from './ShiftForm.module.css';
 
 interface ShiftFormProps {
@@ -86,11 +87,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ★バリデーション：終了時間が開始時間より前ならエラー
-    if (startTime >= endTime) {
-      triggerErrorEffect('終了時間は開始時間より後に設定してください');
-      return;
-    }
+    // 日をまたぐシフト（例：22:00〜05:00）を許容するためバリデーションを削除します
 
     let currentWage = userConfig.hourlyWage;
     if (jobId) {
@@ -117,7 +114,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     } else {
       addShift(shiftData);
     }
-    
+
     if (onSave) onSave();
     onClose();
   };
@@ -134,7 +131,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     });
     setShowProfileSave(false);
     setProfileName('');
-    
+
     if (onToast) onToast('テンプレートを保存しました', 'success');
   };
 
@@ -160,7 +157,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
 
   return createPortal(
     <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
-      <div 
+      <div
         className={`${styles.modal} ${isShaking ? styles.shake : ''}`} // シェイク用のクラスを適用
         style={{
           // シェイクアニメーションの定義（インラインスタイルで簡易実装）
@@ -183,11 +180,11 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             <X size={24} />
           </button>
           <h3>{existingShift ? 'シフト編集' : 'シフト追加'}</h3>
-          <div style={{ width: 24 }}></div> 
+          <div style={{ width: 24 }}></div>
         </div>
 
         <form id="shift-form" onSubmit={handleSubmit} className={styles.form}>
-          
+
           {shiftProfiles.length > 0 && (
             <div className={styles.formGroup}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -264,14 +261,14 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Watch size={16} /> 休憩時間
             </label>
-            
-            <div 
-              className="input" 
+
+            <div
+              className="input"
               onClick={() => setIsBreakPickerOpen(!isBreakPickerOpen)}
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 cursor: 'pointer',
                 backgroundColor: isBreakPickerOpen ? '#f0f9ff' : '#fff',
                 borderColor: isBreakPickerOpen ? 'hsl(var(--primary))' : 'var(--border)',
@@ -281,7 +278,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
               <span style={{ fontSize: '1rem' }}>
                 {breakTime === 0 ? 'なし' : `${breakHours}時間 ${breakMinutes}分`}
               </span>
-              <ChevronDown size={16} style={{ 
+              <ChevronDown size={16} style={{
                 transform: isBreakPickerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s',
                 color: '#666'
@@ -289,9 +286,9 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             </div>
 
             {isBreakPickerOpen && (
-              <div style={{ 
+              <div style={{
                 marginTop: '0px',
-                border: '1px solid var(--border)', 
+                border: '1px solid var(--border)',
                 borderTop: 'none',
                 borderBottomLeftRadius: '8px',
                 borderBottomRightRadius: '8px',
@@ -316,12 +313,12 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                 }}></div>
 
                 <div style={{ display: 'flex', height: '180px' }}>
-                  <div 
+                  <div
                     ref={hoursRef}
-                    style={{ 
-                      flex: 1, 
-                      overflowY: 'auto', 
-                      scrollbarWidth: 'none', 
+                    style={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      scrollbarWidth: 'none',
                       msOverflowStyle: 'none',
                       position: 'relative',
                       zIndex: 1,
@@ -330,14 +327,14 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                   >
                     <div style={{ height: '70px' }}></div>
                     {hourOptions.map(h => (
-                      <div 
+                      <div
                         key={h}
                         data-value={h}
                         onClick={() => setBreakTime(h * 60 + breakMinutes)}
-                        style={{ 
-                          height: '40px', 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        style={{
+                          height: '40px',
+                          display: 'flex',
+                          alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
                           color: breakHours === h ? 'hsl(var(--primary))' : '#999',
@@ -353,12 +350,12 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                     <div style={{ height: '70px' }}></div>
                   </div>
 
-                  <div 
+                  <div
                     ref={minutesRef}
-                    style={{ 
-                      flex: 1, 
-                      overflowY: 'auto', 
-                      scrollbarWidth: 'none', 
+                    style={{
+                      flex: 1,
+                      overflowY: 'auto',
+                      scrollbarWidth: 'none',
                       msOverflowStyle: 'none',
                       position: 'relative',
                       zIndex: 1,
@@ -368,14 +365,14 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                   >
                     <div style={{ height: '70px' }}></div>
                     {minuteOptions.map(m => (
-                      <div 
+                      <div
                         key={m}
                         data-value={m}
                         onClick={() => setBreakTime(breakHours * 60 + m)}
-                        style={{ 
-                          height: '40px', 
-                          display: 'flex', 
-                          alignItems: 'center', 
+                        style={{
+                          height: '40px',
+                          display: 'flex',
+                          alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
                           color: breakMinutes === m ? 'hsl(var(--primary))' : '#999',
@@ -393,6 +390,51 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Salary Preview */}
+          <div style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            backgroundColor: 'hsl(var(--primary) / 0.05)',
+            borderRadius: '12px',
+            border: '1px dashed hsl(var(--primary) / 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Coins size={14} /> 概算給与
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+              ¥{(() => {
+                let currentWage = userConfig.hourlyWage;
+                if (jobId) {
+                  const job = jobs.find(j => j.id === jobId);
+                  if (job) currentWage = job.hourlyWage;
+                }
+                const tempShift: Shift = {
+                  id: 'preview',
+                  date,
+                  startTime,
+                  endTime,
+                  breakTime,
+                  hourlyWage: currentWage,
+                  jobId: jobId || undefined,
+                };
+                return calculateShiftSalary(tempShift, userConfig.nightWageMultiplier).toLocaleString();
+              })()}
+              <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: '#999', marginLeft: '0.5rem' }}>
+                (時給: ¥{(() => {
+                  let currentWage = userConfig.hourlyWage;
+                  if (jobId) {
+                    const job = jobs.find(j => j.id === jobId);
+                    if (job) currentWage = job.hourlyWage;
+                  }
+                  return currentWage.toLocaleString();
+                })()})
+              </span>
+            </div>
           </div>
 
           <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
@@ -420,7 +462,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               <Save size={20} /> 保存する
             </button>
-            
+
             {existingShift && (
               <button type="button" onClick={handleDelete} className="btn btn-ghost" style={{ width: '100%', color: 'var(--danger)', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Trash2 size={16} /> このシフトを削除

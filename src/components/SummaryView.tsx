@@ -23,7 +23,7 @@ export default function SummaryView() {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
 
-  const monthlySalary = calculateMonthlySalary(shifts, year, month);
+  const monthlySalary = calculateMonthlySalary(shifts, year, month, userConfig.nightWageMultiplier);
 
   const currentMonthTransactions = transactions.filter(t =>
     isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
@@ -63,21 +63,21 @@ export default function SummaryView() {
       : 0;
 
   const savingsColor =
-  savingsProgress >= 100
-    ? 'var(--success)'
-    : savingsProgress >= 50
-    ? 'var(--primary)'
-    : 'var(--warning)';
+    savingsProgress >= 100
+      ? 'var(--success)'
+      : savingsProgress >= 50
+        ? 'var(--primary)'
+        : 'var(--warning)';
 
 
   // Budget Progress
   const budgetProgress = Math.min((totalExpense / userConfig.monthlyBudget) * 100, 100);
   const budgetColor =
-  budgetProgress > 90
-    ? 'hsl(var(--danger))'
-    : budgetProgress > 75
-    ? 'hsl(var(--warning))'
-    : 'hsl(var(--success))';
+    budgetProgress > 90
+      ? 'hsl(var(--danger))'
+      : budgetProgress > 75
+        ? 'hsl(var(--warning))'
+        : 'hsl(var(--success))';
 
   const budgetDiff = userConfig.monthlyBudget - totalExpense;
   const isOverBudget = budgetDiff < 0;
@@ -85,65 +85,65 @@ export default function SummaryView() {
   const nextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
   const prevMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
 
-return (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-    {/* ===== 上段：月別サマリー ===== */}
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <button onClick={prevMonth} className="btn btn-outline">
-          <ChevronLeft size={20} />
-        </button>
-        <h2 style={{ fontSize: '1.25rem' }}>
-          {format(currentDate, 'yyyy年 M月', { locale: ja })}
-        </h2>
-        <button onClick={nextMonth} className="btn btn-outline">
-          <ChevronRight size={20} />
-        </button>
-      </div>
-
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: '0.875rem', color: '#666' }}>今月の収支</div>
-        <div
-          style={{
-            fontSize: '2.5rem',
-            fontWeight: 'bold',
-            color: balance >= 0 ? 'var(--primary)' : 'var(--danger)',
-          }}
-        >
-          {balance >= 0 ? '+' : ''}¥{balance.toLocaleString()}
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      {/* ===== 上段：月別サマリー ===== */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <button onClick={prevMonth} className="btn btn-outline">
+            <ChevronLeft size={20} />
+          </button>
+          <h2 style={{ fontSize: '1.25rem' }}>
+            {format(currentDate, 'yyyy年 M月', { locale: ja })}
+          </h2>
+          <button onClick={nextMonth} className="btn btn-outline">
+            <ChevronRight size={20} />
+          </button>
         </div>
-      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-        <div className="card" style={{ backgroundColor: 'hsl(var(--background))', padding: '1rem', border: 'none' }}>
-          <div style={{ fontSize: '0.75rem', color: '#666' }}>総収入</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--success)' }}>
-            ¥{totalIncome.toLocaleString()}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: '#999' }}>
-            (給与: ¥{monthlySalary.toLocaleString()})
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: '0.875rem', color: '#666' }}>今月の収支</div>
+          <div
+            style={{
+              fontSize: '2.5rem',
+              fontWeight: 'bold',
+              color: balance >= 0 ? 'var(--primary)' : 'var(--danger)',
+            }}
+          >
+            {balance >= 0 ? '+' : ''}¥{balance.toLocaleString()}
           </div>
         </div>
 
-        <div className="card" style={{ backgroundColor: 'hsl(var(--background))', padding: '1rem', border: 'none' }}>
-          <div style={{ fontSize: '0.75rem', color: '#666' }}>総支出</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--danger)' }}>
-            ¥{totalExpense.toLocaleString()}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="card" style={{ backgroundColor: 'hsl(var(--background))', padding: '1rem', border: 'none' }}>
+            <div style={{ fontSize: '0.75rem', color: '#666' }}>総収入</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--success)' }}>
+              ¥{totalIncome.toLocaleString()}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#999' }}>
+              (給与: ¥{monthlySalary.toLocaleString()})
+            </div>
+          </div>
+
+          <div className="card" style={{ backgroundColor: 'hsl(var(--background))', padding: '1rem', border: 'none' }}>
+            <div style={{ fontSize: '0.75rem', color: '#666' }}>総支出</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--danger)' }}>
+              ¥{totalExpense.toLocaleString()}
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    {/* ===== 予算管理 ===== */}
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <h3>予算管理</h3>
-        <button className="btn btn-outline" onClick={() => setIsSettingsOpen(prev => !prev)}>
-          <Settings size={16} />
-        </button>
-      </div>
+      {/* ===== 予算管理 ===== */}
+      <div className="card">
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <h3>予算管理</h3>
+          <button className="btn btn-outline" onClick={() => setIsSettingsOpen(prev => !prev)}>
+            <Settings size={16} />
+          </button>
+        </div>
 
-      {!isSettingsOpen && (
+        {!isSettingsOpen && (
           <div
             style={{
               marginTop: '1rem',
@@ -151,51 +151,51 @@ return (
               flexDirection: 'column',
               gap: '1rem',
             }}>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-              <span>予算消化率</span>
-              <span>{Math.round(budgetProgress)}%</span>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                <span>予算消化率</span>
+                <span>{Math.round(budgetProgress)}%</span>
+              </div>
+
+              <div
+                style={{
+                  height: '10px',
+                  backgroundColor: 'hsl(var(--background))',
+                  borderRadius: '5px',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ width: `${budgetProgress}%`, height: '100%', backgroundColor: budgetColor, transition: 'width 0.5s' }}
+                />
+              </div>
             </div>
 
-            <div
-              style={{
-                height: '10px',
-                backgroundColor: 'hsl(var(--background))',
-                borderRadius: '5px',
-                overflow: 'hidden',
-              }}
-            >
-              <div style={{ width: `${budgetProgress}%`,height: '100%', backgroundColor: budgetColor,transition: 'width 0.5s'}}
-              />
+            <div style={{ textAlign: 'right', fontSize: '0.75rem', color: isOverBudget ? 'var(--danger)' : '#666', fontWeight: isOverBudget ? 'bold' : 'normal', }}>
+              {isOverBudget ? (
+                <>OVER ¥{Math.abs(budgetDiff).toLocaleString()}</>
+              ) : (
+                <>
+                  残り ¥{budgetDiff.toLocaleString()}
+                  {' / '}
+                  ¥{userConfig.monthlyBudget.toLocaleString()}
+                </>
+              )}
+
             </div>
-          </div>
 
-          <div style={{textAlign: 'right',fontSize: '0.75rem',color: isOverBudget ? 'var(--danger)' : '#666',fontWeight: isOverBudget ? 'bold' : 'normal',}}>
-            {isOverBudget ? (
-              <>OVER ¥{Math.abs(budgetDiff).toLocaleString()}</>
-            ) : (
-              <>
-                残り ¥{budgetDiff.toLocaleString()}
-                {' / '}
-                ¥{userConfig.monthlyBudget.toLocaleString()}
-              </>
-            )}
-
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '0.875rem',
-                marginBottom: '0.25rem',
-              }}
-            >
-              <span>貯金目標達成率</span>
-              <span>{Math.round(savingsProgress)}%</span>
-            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '0.875rem',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                <span>貯金目標達成率</span>
+                <span>{Math.round(savingsProgress)}%</span>
+              </div>
 
 
               <div
@@ -231,13 +231,13 @@ return (
               <span>目標: ¥{userConfig.savingsGoal.toLocaleString()}</span>
             </div>
           </div>
-      )}
+        )}
 
-      {isSettingsOpen && (
-        <BudgetSettings onClose={() => setIsSettingsOpen(false)} />
-      )}
+        {isSettingsOpen && (
+          <BudgetSettings onClose={() => setIsSettingsOpen(false)} />
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
 
 }
