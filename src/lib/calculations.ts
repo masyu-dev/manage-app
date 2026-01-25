@@ -33,13 +33,12 @@ export function calculateShiftSalary(shift: Shift, nightWageMultiplier: number =
   // Calculate night minutes (22:00 - 05:00 next day)
   // 22:00 = 22 * 60 = 1320
   // 05:00 (next day) = 29 * 60 = 1740
-  // We need to check overlap between [startMin, endMin] and [1320, 1740] (and potentially [22:00 previous day, 05:00 current day] if shift starts early morning, but simplified assumption: shift is within 24h window mostly starting day)
-  // Simplified logic: Check intersection with 22:00-29:00 window relative to start day.
 
   const nightStart = 22 * 60; // 22:00
   const nightEnd = 29 * 60;   // 05:00 next day (29:00)
 
   // Calculate overlap
+  // Case 1: Standard night shift (e.g. 22:00 - 29:00)
   const overlapStart = Math.max(startMin, nightStart);
   const overlapEnd = Math.min(endMin, nightEnd);
 

@@ -13,7 +13,8 @@
 }
 
 .shiftDetailSheet {
-    background-color: #fff;
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
     border-top-left-radius: 20px;
     border-top-right-radius: 20px;
     width: 100%;
@@ -38,7 +39,7 @@
 .dragHandle {
     width: 40px;
     height: 4px;
-    background-color: #e0e0e0;
+    background-color: hsl(var(--border));
     border-radius: 2px;
 }
 
@@ -57,7 +58,7 @@
 .dateTitle {
     font-size: 1.25rem;
     font-weight: bold;
-    color: #333;
+    color: hsl(var(--foreground));
 }
 
 .closeButton {
@@ -66,7 +67,8 @@
     cursor: pointer;
     padding: 8px;
     border-radius: 50%;
-    color: #888;
+    color: hsl(var(--foreground));
+    opacity: 0.6;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -74,7 +76,8 @@
 }
 
 .closeButton:hover {
-    background-color: #f5f5f5;
+    background-color: hsl(var(--background));
+    opacity: 1;
 }
 
 .infoRow {
@@ -83,7 +86,7 @@
     gap: 12px;
     margin-bottom: 16px;
     font-size: 1rem;
-    color: #444;
+    color: hsl(var(--foreground));
 }
 
 .iconWrapper {
@@ -93,23 +96,23 @@
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    background-color: #f0f9ff;
-    color: #0284c7;
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
 }
 
 .infoLabel {
     font-size: 0.85rem;
-    color: #888;
+    color: hsl(var(--foreground) / 0.6);
     margin-bottom: 2px;
 }
 
 .infoValue {
     font-weight: 500;
-    color: #333;
+    color: hsl(var(--foreground));
 }
 
 .wageInfo {
-    background-color: #f8fafc;
+    background-color: hsl(var(--background));
     border-radius: 12px;
     padding: 16px;
     margin-top: 8px;
@@ -128,20 +131,20 @@
 }
 
 .wageLabel {
-    color: #94a3b8;
+    color: hsl(var(--foreground) / 0.6);
     font-size: 0.9rem;
 }
 
 .wageValue {
     font-weight: 600;
-    color: #475569;
+    color: hsl(var(--foreground));
 }
 
 .actionButton {
     width: 100%;
     padding: 16px;
-    background-color: #0284c7;
-    color: white;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
     border: none;
     border-radius: 12px;
     font-size: 1rem;
@@ -155,7 +158,7 @@
 }
 
 .actionButton:hover {
-    background-color: #0369a1;
+    opacity: 0.9;
 }
 
 .actionButton:active {

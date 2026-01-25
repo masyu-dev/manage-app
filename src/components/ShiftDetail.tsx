@@ -9,6 +9,9 @@ import { ja } from 'date-fns/locale';
 import { X, Clock, Wallet, Edit2, Briefcase } from 'lucide-react';
 import styles from './ShiftDetail.module.css';
 
+import { useApp } from '@/lib/store';
+import { calculateShiftSalary } from '@/lib/calculations';
+
 interface ShiftDetailProps {
     shift: Shift;
     job?: Job;
@@ -17,15 +20,23 @@ interface ShiftDetailProps {
 }
 
 export default function ShiftDetail({ shift, job, onClose, onEdit }: ShiftDetailProps) {
+    const { userConfig } = useApp();
+
     // Calculate duration
     const start = new Date(`2000-01-01T${shift.startTime}`);
-    const end = new Date(`2000-01-01T${shift.endTime}`);
+    let end = new Date(`2000-01-01T${shift.endTime}`);
+
+    // 日またぎ対応: 終了時間が開始時間より前の場合は翌日扱いにする
+    if (end < start) {
+        end = new Date(`2000-01-02T${shift.endTime}`);
+    }
+
     const durationMs = end.getTime() - start.getTime();
     const durationHours = durationMs / (1000 * 60 * 60);
     const workHours = Math.max(0, durationHours - (shift.breakTime / 60));
 
     // Calculate wage
-    const estimatedWage = Math.floor(workHours * shift.hourlyWage);
+    const estimatedWage = calculateShiftSalary(shift, userConfig.nightWageMultiplier);
 
     // Animation variants
     const variants = {
@@ -113,8 +124,8 @@ export default function ShiftDetail({ shift, job, onClose, onEdit }: ShiftDetail
                         </div>
                         <div style={{ borderTop: '1px dashed #e2e8f0', margin: '8px 0' }} />
                         <div className={styles.wageRow}>
-                            <span className={styles.wageLabel} style={{ color: '#64748b' }}>概算給与</span>
-                            <span className={styles.wageValue} style={{ color: '#0f172a', fontSize: '1.1rem' }}>
+                            <span className={styles.wageLabel}>概算給与</span>
+                            <span className={styles.wageValue} style={{ fontSize: '1.5rem', color: 'hsl(var(--primary))' }}>
                                 ¥{estimatedWage.toLocaleString()}
                             </span>
                         </div>
