@@ -86,7 +86,7 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const { shifts, jobs } = useApp();
+  const { shifts, jobs, userConfig } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -328,6 +328,7 @@ export default function Calendar() {
               currentDate={currentDate}
               shifts={shifts}
               jobs={jobs}
+              nightWageMultiplier={userConfig.nightWageMultiplier}
               onDayClick={handleDayClick}
               onShiftClick={handleShiftClick}
             />

@@ -5,7 +5,8 @@ import { useApp } from '@/lib/store';
 import { Shift } from '@/types';
 import { format } from 'date-fns';
 import { createPortal } from 'react-dom';
-import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X, Watch, ChevronDown } from 'lucide-react';
+import { calculateShiftSalary } from '@/lib/calculations';
+import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X, Watch, ChevronDown, Coins } from 'lucide-react';
 import styles from './ShiftForm.module.css';
 
 interface ShiftFormProps {
@@ -94,11 +95,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // ★バリデーション：終了時間が開始時間より前ならエラー
-    if (startTime >= endTime) {
-      triggerErrorEffect('終了時間は開始時間より後に設定してください');
-      return;
-    }
+    // 日をまたぐシフト（例：22:00〜05:00）を許容するためバリデーションを削除します
 
     let currentWage = userConfig.hourlyWage;
     if (jobId) {
@@ -172,7 +169,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
 
   return createPortal(
     <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
-      <div 
+      <div
         className={`${styles.modal} ${isShaking ? styles.shake : ''}`} // シェイク用のクラスを適用
         style={{
           // シェイクアニメーションの定義（インラインスタイルで簡易実装）
@@ -408,6 +405,51 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Salary Preview */}
+          <div style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            backgroundColor: 'hsl(var(--primary) / 0.05)',
+            borderRadius: '12px',
+            border: '1px dashed hsl(var(--primary) / 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Coins size={14} /> 概算給与
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+              ¥{(() => {
+                let currentWage = userConfig.hourlyWage;
+                if (jobId) {
+                  const job = jobs.find(j => j.id === jobId);
+                  if (job) currentWage = job.hourlyWage;
+                }
+                const tempShift: Shift = {
+                  id: 'preview',
+                  date,
+                  startTime,
+                  endTime,
+                  breakTime,
+                  hourlyWage: currentWage,
+                  jobId: jobId || undefined,
+                };
+                return calculateShiftSalary(tempShift, userConfig.nightWageMultiplier).toLocaleString();
+              })()}
+              <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: '#999', marginLeft: '0.5rem' }}>
+                (時給: ¥{(() => {
+                  let currentWage = userConfig.hourlyWage;
+                  if (jobId) {
+                    const job = jobs.find(j => j.id === jobId);
+                    if (job) currentWage = job.hourlyWage;
+                  }
+                  return currentWage.toLocaleString();
+                })()})
+              </span>
+            </div>
           </div>
 
           <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>

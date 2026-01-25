@@ -10,12 +10,14 @@ import {
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Shift, Job } from '@/types';
+import { calculateShiftSalary } from '@/lib/calculations';
 import styles from './VerticalCalendar.module.css';
 
 interface VerticalCalendarProps {
   currentDate: Date;
   shifts: Shift[];
   jobs: Job[];
+  nightWageMultiplier: number;
   onDayClick: (date: Date) => void;
   onShiftClick: (e: React.MouseEvent, shift: Shift) => void;
 }
@@ -24,6 +26,7 @@ export default function VerticalCalendar({
   currentDate,
   shifts,
   jobs,
+  nightWageMultiplier,
   onDayClick,
   onShiftClick,
 }: VerticalCalendarProps) {
@@ -89,11 +92,21 @@ export default function VerticalCalendar({
                     <div
                       key={shift.id}
                       className={styles.shiftItem}
-                      style={{ backgroundColor }}
+                      style={{
+                        backgroundColor,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
                       onClick={(e) => onShiftClick(e, shift)}
                     >
-                      {job && <span style={{ marginRight: '4px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
-                      {shift.startTime}-{shift.endTime}
+                      <span>
+                        {job && <span style={{ marginRight: '4px', opacity: 0.9 }}>{job.name.slice(0, 1)}</span>}
+                        {shift.startTime}-{shift.endTime}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', opacity: 0.9 }}>
+                        ¥{calculateShiftSalary(shift, nightWageMultiplier).toLocaleString()}
+                      </span>
                     </div>
                   );
                 })
