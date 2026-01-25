@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
-import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, isBefore, addMonths } from 'date-fns';
 import { calculateMonthlySalary } from '@/lib/calculations';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
@@ -47,10 +47,17 @@ export default function BudgetView() {
   const [isFormOpen, setIsFormOpen] = useState(false);
 
   // --- 39行目 〜 67行目を以下に書き換え ---
-  useEffect(() => {
-    // 1. 固定費の自動追加
+useEffect(() => {
+    if (!userConfig.fixedCosts?.length) return;
+
+    // 【追加】表示中の月が今月より前（過去）なら処理を中断する
+    if (isBefore(startOfMonth(currentDate), startOfMonth(new Date()))) return;
+
+    // 現在表示されている月の「年-月」 (例: "2024-05")
+    const monthStr = format(currentDate, 'yyyy-MM');
+
+    // 2. 固定費の自動追加
     if (userConfig.fixedCosts?.length) {
-      const monthStr = format(currentDate, 'yyyy-MM');
       userConfig.fixedCosts.forEach(cost => {
         const fixedDescription = `${cost.name} (固定費)`;
         const isAlreadyAdded = transactions.some(t =>
@@ -71,9 +78,8 @@ export default function BudgetView() {
       });
     }
 
-    // 2. 給与(予定)の自動追加
+    // 3. 給与(予定)の自動追加
     if (jobs.length) {
-      const monthStr = format(currentDate, 'yyyy-MM');
       const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
       const salaryTag = tags.find(t => t.name === '給料' && t.type === 'income')?.id || '3';
 
@@ -109,7 +115,6 @@ export default function BudgetView() {
       });
     }
   }, [currentDate, userConfig.fixedCosts, transactions.length, jobs, shifts, userConfig.nightWageMultiplier, tags, addTransaction]);
-
   // Tag Form State
   const [isTagFormOpen, setIsTagFormOpen] = useState(false);
   const [newTagName, setNewTagName] = useState('');
@@ -365,7 +370,12 @@ export default function BudgetView() {
         )}
       </div>
 
-      <BudgetCalendar />
+<BudgetCalendar 
+        currentDate={currentDate} 
+        page={page} 
+        direction={direction} 
+        onPaginate={paginate} 
+      />
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
