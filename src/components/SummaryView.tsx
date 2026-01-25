@@ -29,6 +29,9 @@ export default function SummaryView() {
     isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
   );
 
+  const hasTransactions = currentMonthTransactions.length > 0;
+
+
   const otherIncome = currentMonthTransactions
     .filter(t => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
@@ -56,12 +59,32 @@ export default function SummaryView() {
     totalIncomeAllTime - totalExpenseAllTime
   );
 
-  //最終目標に対する達成率
-  const savingsProgress =
-    userConfig.savingsGoal > 0
-      ? Math.min((totalSavings / userConfig.savingsGoal) * 100, 100)
+  // === 空状態ガード用 ===
+  const safeMonthlyBudget = userConfig.monthlyBudget || 0;
+  const safeSavingsGoal = userConfig.savingsGoal || 0;
+
+  // Budget Progress
+  const budgetProgress =
+    safeMonthlyBudget > 0
+      ? Math.min((totalExpense / safeMonthlyBudget) * 100, 100)
       : 0;
 
+  const budgetColor =
+    safeMonthlyBudget === 0
+      ? 'hsl(var(--muted))'
+      : budgetProgress > 90
+        ? 'hsl(var(--danger))'
+        : budgetProgress > 75
+          ? 'hsl(var(--warning))'
+          : 'hsl(var(--success))';
+
+  //最終目標に対する達成率
+  const savingsProgress =
+    safeSavingsGoal > 0
+      ? Math.min((totalSavings / safeSavingsGoal) * 100, 100)
+      : 0;
+
+  // Savings Progress Color
   const savingsColor =
     savingsProgress >= 100
       ? 'var(--success)'
@@ -69,18 +92,9 @@ export default function SummaryView() {
         ? 'var(--primary)'
         : 'var(--warning)';
 
-
-  // Budget Progress
-  const budgetProgress = Math.min((totalExpense / userConfig.monthlyBudget) * 100, 100);
-  const budgetColor =
-    budgetProgress > 90
-      ? 'hsl(var(--danger))'
-      : budgetProgress > 75
-        ? 'hsl(var(--warning))'
-        : 'hsl(var(--success))';
-
+  const hasBudget = userConfig.monthlyBudget > 0;
   const budgetDiff = userConfig.monthlyBudget - totalExpense;
-  const isOverBudget = budgetDiff < 0;
+  const isOverBudget = hasBudget && budgetDiff < 0;
 
   const nextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
   const prevMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() - 1)));
@@ -102,6 +116,12 @@ export default function SummaryView() {
         </div>
 
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          {!hasTransactions && (
+            <div style={{ fontSize: '0.875rem', color: '#999', marginBottom: '0.5rem' }}>
+              今月の取引データがありません
+            </div>
+          )}
+
           <div style={{ fontSize: '0.875rem', color: '#666' }}>今月の収支</div>
           <div
             style={{
@@ -155,6 +175,11 @@ export default function SummaryView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
                 <span>予算消化率</span>
+                {userConfig.monthlyBudget === 0 && (
+                  <div style={{ fontSize: '0.75rem', color: '#999' }}>
+                    予算が未設定です。設定ボタンから入力してください。
+                  </div>
+                )}
                 <span>{Math.round(budgetProgress)}%</span>
               </div>
 
@@ -166,23 +191,31 @@ export default function SummaryView() {
                   overflow: 'hidden',
                 }}
               >
-                <div style={{ width: `${budgetProgress}%`, height: '100%', backgroundColor: budgetColor, transition: 'width 0.5s' }}
+                <div style={{ width: `${budgetProgress}%`, height: '100%', backgroundColor: budgetColor, transition: 'width 0.5s'}}
                 />
               </div>
             </div>
 
-            <div style={{ textAlign: 'right', fontSize: '0.75rem', color: isOverBudget ? 'var(--danger)' : '#666', fontWeight: isOverBudget ? 'bold' : 'normal', }}>
-              {isOverBudget ? (
-                <>OVER ¥{Math.abs(budgetDiff).toLocaleString()}</>
-              ) : (
-                <>
-                  残り ¥{budgetDiff.toLocaleString()}
-                  {' / '}
-                  ¥{userConfig.monthlyBudget.toLocaleString()}
-                </>
-              )}
-
-            </div>
+            {hasBudget && (
+              <div
+                style={{
+                  textAlign: 'right',
+                  fontSize: '0.75rem',
+                  color: isOverBudget ? 'var(--danger)' : '#666',
+                  fontWeight: isOverBudget ? 'bold' : 'normal',
+                }}
+              >
+                {isOverBudget ? (
+                  <>OVER ¥{Math.abs(budgetDiff).toLocaleString()}</>
+                ) : (
+                  <>
+                    残り ¥{budgetDiff.toLocaleString()}
+                    {' / '}
+                    ¥{userConfig.monthlyBudget.toLocaleString()}
+                  </>
+                )}
+              </div>
+            )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               <div
@@ -194,6 +227,11 @@ export default function SummaryView() {
                 }}
               >
                 <span>貯金目標達成率</span>
+                {userConfig.savingsGoal === 0 && (
+                  <div style={{ fontSize: '0.75rem', color: '#999' }}>
+                    貯金目標が未設定です。
+                  </div>
+                )}
                 <span>{Math.round(savingsProgress)}%</span>
               </div>
 
