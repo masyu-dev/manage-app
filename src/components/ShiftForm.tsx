@@ -65,6 +65,14 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     }
   }, [isBreakPickerOpen]);
 
+  // Simple UUID v4 generator fallback
+  const generateId = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   // エラー時の演出実行関数
   const triggerErrorEffect = (msg: string) => {
     // 1. 赤色トースト表示
@@ -100,7 +108,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     }
 
     const shiftData: Shift = {
-      id: existingShift?.id || crypto.randomUUID(),
+      id: existingShift?.id || generateId(),
       date,
       startTime,
       endTime,
@@ -122,7 +130,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   const handleSaveProfile = () => {
     if (!profileName) return;
     addShiftProfile({
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: profileName,
       startTime,
       endTime,
@@ -131,8 +139,12 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     });
     setShowProfileSave(false);
     setProfileName('');
-
-    if (onToast) onToast('テンプレートを保存しました', 'success');
+    
+    if (onToast) {
+      onToast('テンプレートを保存しました', 'success');
+    } else {
+      alert('テンプレートを保存しました');
+    }
   };
 
   const loadProfile = (profileId: string) => {
@@ -261,9 +273,10 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Watch size={16} /> 休憩時間
             </label>
-
-            <div
-              className="input"
+            
+            {/* 1. トリガー行（現在の設定値を表示・クリックで開閉） */}
+            <div 
+              className="input" 
               onClick={() => setIsBreakPickerOpen(!isBreakPickerOpen)}
               style={{
                 display: 'flex',
@@ -286,10 +299,10 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             </div>
 
             {isBreakPickerOpen && (
-              <div style={{
-                marginTop: '0px',
-                border: '1px solid var(--border)',
-                borderTop: 'none',
+              <div style={{ 
+                marginTop: '0px', // 入力欄とくっつける
+                border: '1px solid var(--border)', 
+                borderTop: 'none', // 上の線は消して一体感を出す
                 borderBottomLeftRadius: '8px',
                 borderBottomRightRadius: '8px',
                 overflow: 'hidden',
@@ -313,7 +326,8 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                 }}></div>
 
                 <div style={{ display: 'flex', height: '180px' }}>
-                  <div
+                  {/* 時間の列 */}
+                  <div 
                     ref={hoursRef}
                     style={{
                       flex: 1,
@@ -350,7 +364,8 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                     <div style={{ height: '70px' }}></div>
                   </div>
 
-                  <div
+                  {/* 分の列 */}
+                  <div 
                     ref={minutesRef}
                     style={{
                       flex: 1,

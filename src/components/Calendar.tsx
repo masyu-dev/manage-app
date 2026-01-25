@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   format,
@@ -20,24 +20,25 @@ import {
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
-import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle, LayoutGrid, LayoutList } from 'lucide-react'; // アイコン追加
+
+import { ChevronLeft, ChevronRight, Plus, Share2, AlertCircle, CheckCircle, LayoutGrid, LayoutList } from 'lucide-react';
 import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
 import VerticalCalendar from './VerticalCalendar';
+import ShiftDetail from './ShiftDetail';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // トーストの種類を定義
 type ToastType = 'success' | 'error';
 
-// トーストコンポーネント（色とアイコンを出し分け）
+// トーストコンポーネント
 const Toast = ({ message, type, onClose }: { message: string; type: ToastType; onClose: () => void }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  // 背景色とアイコンの切り替え
-  const bgColor = type === 'error' ? '#ef4444' : '#333'; // エラーなら赤、通常は黒
+  const bgColor = type === 'error' ? '#ef4444' : '#333';
   const Icon = type === 'error' ? AlertCircle : CheckCircle;
 
   return createPortal(
@@ -88,12 +89,14 @@ export default function Calendar() {
   const { shifts, jobs, userConfig } = useApp();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
 
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const today = new Date();
 
-  // トースト管理（メッセージとタイプ）
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<ToastType>('success');
@@ -108,6 +111,7 @@ export default function Calendar() {
   const paginate = (newDirection: number) => {
     setPage([page + newDirection, newDirection]);
     setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
+    setIsDetailModalOpen(false);
   };
 
   const nextMonth = () => paginate(1);
@@ -116,11 +120,13 @@ export default function Calendar() {
   const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newYear = parseInt(e.target.value, 10);
     setCurrentDate(setYear(currentDate, newYear));
+    setIsDetailModalOpen(false);
   };
 
   const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newMonth = parseInt(e.target.value, 10);
     setCurrentDate(setMonth(currentDate, newMonth));
+    setIsDetailModalOpen(false);
   };
 
   const currentYear = getYear(currentDate);
@@ -136,16 +142,39 @@ export default function Calendar() {
     setSelectedDate(date);
     setSelectedShift(undefined);
     setIsModalOpen(true);
+    setIsDetailModalOpen(false);
   };
 
   const handleShiftClick = (e: React.MouseEvent, shift: any) => {
     e.stopPropagation();
-    setSelectedShift(shift);
-    setSelectedDate(new Date(shift.date));
+
+    if (clickTimeoutRef.current) {
+      // Double Tap Detected -> Edit Mode
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+
+      setSelectedShift(shift);
+      setSelectedDate(new Date(shift.date));
+      setIsDetailModalOpen(false);
+      setIsModalOpen(true);
+    } else {
+      // Single Tap -> Wait for potential second tap
+      clickTimeoutRef.current = setTimeout(() => {
+        clickTimeoutRef.current = null;
+
+        // Single Tap Confirmed -> Detail Mode
+        setSelectedShift(shift);
+        setIsDetailModalOpen(true);
+      }, 250);
+    }
+  };
+
+  const handleDetailEdit = () => {
+    setIsDetailModalOpen(false);
+    setSelectedDate(new Date(selectedShift.date));
     setIsModalOpen(true);
   };
 
-  // トースト表示関数（タイプ指定可能に拡張）
   const triggerToast = (msg: string, type: ToastType = 'success') => {
     setToastMessage(msg);
     setToastType(type);
@@ -239,6 +268,7 @@ export default function Calendar() {
                     onClick={() => handleDayClick(day)}
                   >
                     <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
+                    
                     {/* Payday Highlight */}
                     <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginBottom: '2px' }}>
                       {jobs.filter(j => j.payDay === day.getDate()).map(j => (
@@ -255,6 +285,7 @@ export default function Calendar() {
                         />
                       ))}
                     </div>
+
                     <div className={styles.shiftList}>
                       {dayShifts.map(shift => {
                         const job = jobs.find(j => j.id === shift.jobId);
@@ -305,6 +336,7 @@ export default function Calendar() {
         </motion.div>
       </AnimatePresence>
 
+      {/* Edit Form Modal */}
       {isModalOpen && (
         <ShiftForm
           initialDate={selectedDate}
@@ -312,11 +344,23 @@ export default function Calendar() {
           onClose={() => setIsModalOpen(false)}
           onSave={() => triggerToast('シフトを保存しました！', 'success')}
           onDelete={() => triggerToast('シフトを削除しました。', 'success')}
-          onToast={triggerToast} // 子コンポーネントに高機能なトースト関数を渡す
+          onToast={triggerToast}
         />
       )}
 
-      {/* タイプ付きトーストを表示 */}
+      {/* Shift Detail Bottom Sheet */}
+      <AnimatePresence>
+        {isDetailModalOpen && selectedShift && (
+          <ShiftDetail
+            shift={selectedShift}
+            job={jobs.find(j => j.id === selectedShift.jobId)}
+            onClose={() => setIsDetailModalOpen(false)}
+            onEdit={handleDetailEdit}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Toast */}
       {showToast && <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />}
     </div>
   );
