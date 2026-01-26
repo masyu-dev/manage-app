@@ -19,6 +19,7 @@ interface ShiftFormProps {
 }
 
 export default function ShiftForm({ initialDate, existingShift, onClose, onSave, onDelete, onToast }: ShiftFormProps) {
+  // jobs はすでに取得済みなのでそのままでOK
   const { addShift, updateShift, deleteShift, userConfig, shiftProfiles, addShiftProfile, jobs } = useApp();
 
   const [date, setDate] = useState(initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
@@ -163,7 +164,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   return createPortal(
     <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
       <div
-        className={`${styles.modal} ${isShaking ? styles.shake : ''}`} // シェイク用のクラスを適用
+        className={`${styles.modal} ${isShaking ? styles.shake : ''}`}
         style={{
           animation: isShaking ? 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both' : 'none',
           transform: 'translate3d(0, 0, 0)'
@@ -425,7 +426,13 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                   hourlyWage: currentWage,
                   jobId: jobId || undefined,
                 };
-                return calculateShiftSalary(tempShift, userConfig.nightWageMultiplier).toLocaleString();
+                // ▼▼▼ 修正: 引数を4つ渡す形に変更 (shift, jobs, defaultWage, multiplier) ▼▼▼
+                return calculateShiftSalary(
+                  tempShift,
+                  jobs,
+                  userConfig.hourlyWage,
+                  userConfig.nightWageMultiplier
+                ).toLocaleString();
               })()}
               <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: '#999', marginLeft: '0.5rem' }}>
                 (時給: ¥{(() => {

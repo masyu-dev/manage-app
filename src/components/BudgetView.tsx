@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
-import { format, startOfMonth, endOfMonth, isWithinInterval, isBefore, addMonths } from 'date-fns';
+// 必要な date-fns 関数をすべてインポート
+import { format, startOfMonth, endOfMonth, isWithinInterval, isValid, addMonths, subMonths } from 'date-fns';
 import { calculateMonthlySalary } from '@/lib/calculations';
 import { ja } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Plus, X, Trash2 } from 'lucide-react';
@@ -12,21 +13,15 @@ import TransactionForm from './TransactionForm';
 import BudgetCalendar from './BudgetCalendar';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ChartJS registration
+ChartJS.register(ArcElement, Tooltip, Legend);
+
 const TAG_COLORS = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#1a535c', '#ff9f1c', '#2ec4b6', '#e71d36', '#d62828', '#003049', '#f77f00', '#fcbf49'];
 
 const variants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? 50 : -50,
-    opacity: 0,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
-  exit: (direction: number) => ({
-    x: direction < 0 ? 50 : -50,
-    opacity: 0,
-  }),
+  enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction < 0 ? 50 : -50, opacity: 0 }),
 };
 
 export default function BudgetView() {
@@ -38,26 +33,26 @@ export default function BudgetView() {
     deleteTransaction,
     userConfig,
     shifts,
-    addTransaction,   // feature-HAC_Subsc で必要
-    updateUserConfig, // feature-HAC_Subsc で必要
-    jobs              // main で必要
+    addTransaction,
+    updateUserConfig,
+    jobs
   } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
   const [isFormOpen, setIsFormOpen] = useState(false);
 
-  // --- 39行目 〜 67行目を以下に書き換え ---
-useEffect(() => {
-    if (!userConfig.fixedCosts?.length) return;
+  // データクリーンアップ
+  useEffect(() => {
+    const invalidTransactions = transactions.filter(t => !isValid(new Date(t.date)));
+    if (invalidTransactions.length > 0) {
+      invalidTransactions.forEach(t => deleteTransaction(t.id));
+    }
+  }, [transactions, deleteTransaction]);
 
-    // 【追加】表示中の月が今月より前（過去）なら処理を中断する
-    if (isBefore(startOfMonth(currentDate), startOfMonth(new Date()))) return;
-
-    // 現在表示されている月の「年-月」 (例: "2024-05")
-    const monthStr = format(currentDate, 'yyyy-MM');
-
-    // 2. 固定費の自動追加
+  useEffect(() => {
+    // 1. 固定費の自動追加
     if (userConfig.fixedCosts?.length) {
+      const monthStr = format(currentDate, 'yyyy-MM');
       userConfig.fixedCosts.forEach(cost => {
         const fixedDescription = `${cost.name} (固定費)`;
         const isAlreadyAdded = transactions.some(t =>
@@ -78,8 +73,9 @@ useEffect(() => {
       });
     }
 
-    // 3. 給与(予定)の自動追加
+    // 2. 給与(予定)の自動追加
     if (jobs.length) {
+      const monthStr = format(currentDate, 'yyyy-MM');
       const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
       const salaryTag = tags.find(t => t.name === '給料' && t.type === 'income')?.id || '3';
 
@@ -97,30 +93,44 @@ useEffect(() => {
               d.getMonth() === prevMonthDate.getMonth();
           });
 
-          const jobSalary = calculateMonthlySalary(jobShifts, prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, userConfig.nightWageMultiplier);
+          const jobSalary = calculateMonthlySalary(
+            jobShifts,
+            jobs,
+            prevMonthDate.getFullYear(),
+            prevMonthDate.getMonth() + 1,
+            userConfig.hourlyWage,
+            userConfig.nightWageMultiplier
+          );
 
           if (jobSalary > 0) {
-            const payDay = job.payDay || 25;
+            const payDayRaw = Number(job.payDay); 
+            const payDay = !isNaN(payDayRaw) && payDayRaw > 0 ? payDayRaw : 25;
+            
             const dayStr = String(Math.min(payDay, endOfMonth(currentDate).getDate())).padStart(2, '0');
-            addTransaction({
-              id: crypto.randomUUID(),
-              date: `${monthStr}-${dayStr}`,
-              amount: jobSalary,
-              type: 'income',
-              tagId: salaryTag,
-              description: salaryDescription,
-            });
+            const newDateStr = `${monthStr}-${dayStr}`;
+
+            if (isValid(new Date(newDateStr))) {
+                addTransaction({
+                  id: crypto.randomUUID(),
+                  date: newDateStr,
+                  amount: jobSalary,
+                  type: 'income',
+                  tagId: salaryTag,
+                  description: salaryDescription,
+                });
+            }
           }
         }
       });
     }
-  }, [currentDate, userConfig.fixedCosts, transactions.length, jobs, shifts, userConfig.nightWageMultiplier, tags, addTransaction]);
+  }, [currentDate, userConfig.fixedCosts, transactions.length, jobs, shifts, userConfig.nightWageMultiplier, tags, addTransaction, userConfig.hourlyWage]);
+
   // Tag Form State
   const [isTagFormOpen, setIsTagFormOpen] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
 
-  // --- 固定費設定用のステート ---
+  // 固定費設定用のステート
   const [isFixedSettingsOpen, setIsFixedSettingsOpen] = useState(false);
   const [newFixedName, setNewFixedName] = useState('');
   const [newFixedAmount, setNewFixedAmount] = useState('');
@@ -165,7 +175,6 @@ useEffect(() => {
 
   const balance = income - expense;
 
-  // Chart Data Preparation
   const expenseTags = tags.filter(t => t.type === 'expense');
   const expenseByTag = expenseTags.map(tag => {
     const total = currentMonthTransactions
@@ -187,7 +196,7 @@ useEffect(() => {
 
   const paginate = (newDirection: number) => {
     setPage([page + newDirection, newDirection]);
-    setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + (newDirection > 0 ? 1 : -1))));
+    setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
   };
 
   const nextMonth = () => paginate(1);
@@ -204,16 +213,8 @@ useEffect(() => {
 
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
-            key={page}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              x: { type: "spring", stiffness: 600, damping: 40 },
-              opacity: { duration: 0.2 }
-            }}
+            key={page} custom={direction} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ x: { type: "spring", stiffness: 600, damping: 40 }, opacity: { duration: 0.2 } }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '1rem', textAlign: 'center' }}>
               <div>
@@ -243,6 +244,7 @@ useEffect(() => {
         </AnimatePresence>
       </div>
 
+      {/* タグ管理・固定費設定・カレンダーなどは省略せずそのまま配置 */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3>タグ管理</h3>
@@ -250,7 +252,6 @@ useEffect(() => {
             <Plus size={16} />
           </button>
         </div>
-
         {isTagFormOpen && (
           <div style={{ padding: '1rem', backgroundColor: 'hsl(var(--background))', borderRadius: 'var(--radius)', marginBottom: '1rem', border: '1px solid hsl(var(--border))' }}>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -260,12 +261,8 @@ useEffect(() => {
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 {TAG_COLORS.map(c => (
                   <button
-                    key={c}
-                    onClick={() => setNewTagColor(c)}
-                    style={{
-                      width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c,
-                      border: newTagColor === c ? '2px solid black' : '2px solid transparent', cursor: 'pointer'
-                    }}
+                    key={c} onClick={() => setNewTagColor(c)}
+                    style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: c, border: newTagColor === c ? '2px solid black' : '2px solid transparent', cursor: 'pointer' }}
                   />
                 ))}
               </div>
@@ -276,22 +273,17 @@ useEffect(() => {
             </div>
           </div>
         )}
-
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
           {tags.filter(t => t.type === 'expense').map(tag => (
             <div key={tag.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0.5rem', border: '1px solid hsl(var(--border))', borderRadius: '1rem', fontSize: '0.875rem' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: tag.color }}></div>
               <span>{tag.name}</span>
-              {/* Only allow deleting custom tags? For now all expense tags */}
-              <button onClick={() => handleDeleteTag(tag.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 0, marginLeft: '4px' }}>
-                <X size={12} />
-              </button>
+              <button onClick={() => handleDeleteTag(tag.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer', padding: 0, marginLeft: '4px' }}><X size={12} /></button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* --- カレンダーの直前に挿入 --- */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3 style={{ fontSize: '1rem' }}>固定費の自動入力設定</h3>
@@ -299,10 +291,8 @@ useEffect(() => {
             <Plus size={16} />
           </button>
         </div>
-
         {isFixedSettingsOpen && (
           <div style={{ padding: '1rem', backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 'var(--radius)', border: '1px solid hsl(var(--border))' }}>
-            {/* 入力フォーム */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input className="input" placeholder="項目名 (例: 家賃)" value={newFixedName} onChange={e => setNewFixedName(e.target.value)} style={{ flex: 2 }} />
@@ -323,46 +313,11 @@ useEffect(() => {
                 }}>追加</button>
               </div>
             </div>
-
-            {/* 登録済みリスト */}
             <div style={{ borderTop: '1px solid #ddd', paddingTop: '0.5rem' }}>
               {userConfig.fixedCosts?.map(cost => (
-                <div
-                  key={cost.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center', // 垂直方向の中央揃え
-                    fontSize: '0.8rem',
-                    padding: '0.4rem 0',
-                    borderBottom: '1px solid #eee'
-                  }}
-                >
+                <div key={cost.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', padding: '0.4rem 0', borderBottom: '1px solid #eee' }}>
                   <span>{cost.day}日: {cost.name} (¥{cost.amount.toLocaleString()})</span>
-
-                  {/* 丸みを帯びた四角い枠の削除ボタン */}
-                  <button
-                    onClick={() => updateUserConfig({ fixedCosts: userConfig.fixedCosts.filter(c => c.id !== cost.id) })}
-                    style={{
-                      color: '#dc2626',                  // 直接的な赤色指定
-                      border: '1px solid #dc2626',       // 直接的な赤色指定
-                      borderRadius: '6px',
-                      padding: '4px 12px',
-                      backgroundColor: 'transparent',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      fontFamily: 'inherit',             // フォント継承
-                      transition: 'all 0.2s ease'        // ホバーアニメーション用
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#fee2e2';  // ホバー時の背景色
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    削除
-                  </button>
+                  <button onClick={() => updateUserConfig({ fixedCosts: userConfig.fixedCosts.filter(c => c.id !== cost.id) })} style={{ color: '#dc2626', border: '1px solid #dc2626', borderRadius: '6px', padding: '4px 12px', backgroundColor: 'transparent', cursor: 'pointer', fontSize: '0.75rem' }}>削除</button>
                 </div>
               ))}
             </div>
@@ -370,65 +325,36 @@ useEffect(() => {
         )}
       </div>
 
-<BudgetCalendar 
-        currentDate={currentDate} 
-        page={page} 
-        direction={direction} 
-        onPaginate={paginate} 
-      />
+      <BudgetCalendar currentDate={currentDate} page={page} direction={direction} onPaginate={paginate} />
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h3>履歴</h3>
-          <button onClick={() => setIsFormOpen(true)} className="btn btn-primary" style={{ padding: '0.25rem 0.5rem' }}>
-            <Plus size={16} style={{ marginRight: '0.25rem' }} /> 追加
-          </button>
+          <button onClick={() => setIsFormOpen(true)} className="btn btn-primary" style={{ padding: '0.25rem 0.5rem' }}><Plus size={16} style={{ marginRight: '0.25rem' }} /> 追加</button>
         </div>
-
         <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
-            key={page}
-            custom={direction}
-            variants={variants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              x: { type: "spring", stiffness: 600, damping: 40 },
-              opacity: { duration: 0.2 }
-            }}
+            key={page} custom={direction} variants={variants} initial="enter" animate="center" exit="exit"
+            transition={{ x: { type: "spring", stiffness: 600, damping: 40 }, opacity: { duration: 0.2 } }}
             style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}
           >
             {currentMonthTransactions.map(t => {
               const isVirtual = (t as any).isVirtual;
               const tag = tags.find(tag => tag.id === t.tagId);
+              const tDate = new Date(t.date);
+              const dateDisplay = isValid(tDate) ? format(tDate, 'M/d') : '日付不明';
               return (
                 <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))', opacity: isVirtual ? 0.7 : 1, backgroundColor: isVirtual ? 'hsl(var(--background))' : 'transparent' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{
-                      width: '10px', height: '10px', borderRadius: '50%',
-                      backgroundColor: isVirtual ? 'gold' : (tag?.color || '#ccc')
-                    }}></div>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: isVirtual ? 'gold' : (tag?.color || '#ccc') }}></div>
                     <div>
                       <div style={{ fontSize: '0.875rem' }}>{tag?.name || '不明'}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#666' }}>{format(new Date(t.date), 'M/d')} {t.description}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#666' }}>{dateDisplay} {t.description}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{
-                      fontWeight: 'bold',
-                      color: t.type === 'income' ? 'var(--success)' : 'var(--danger)'
-                    }}>
-                      {t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}
-                    </div>
-                    {true && (
-                      <button
-                        onClick={() => deleteTransaction(t.id)}
-                        style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
+                    <div style={{ fontWeight: 'bold', color: t.type === 'income' ? 'var(--success)' : 'var(--danger)' }}>{t.type === 'income' ? '+' : '-'}¥{t.amount.toLocaleString()}</div>
+                    <button onClick={() => deleteTransaction(t.id)} style={{ background: 'none', border: 'none', color: '#999', cursor: 'pointer' }}><Trash2 size={14} /></button>
                   </div>
                 </div>
               );
@@ -437,7 +363,6 @@ useEffect(() => {
           </motion.div>
         </AnimatePresence>
       </div>
-
       {isFormOpen && <TransactionForm onClose={() => setIsFormOpen(false)} />}
     </div>
   );

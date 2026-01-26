@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import styles from './Calendar.module.css'; // Reusing Calendar styles for consistency
+import styles from './Calendar.module.css';
 import TransactionForm from './TransactionForm';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// propsの型定義を追加
+// propsの型定義
 interface BudgetCalendarProps {
   currentDate: Date;
   page: number;
@@ -33,15 +33,13 @@ const variants = {
     opacity: 0,
   }),
 };
+
 export default function BudgetCalendar({ currentDate, page, direction, onPaginate }: BudgetCalendarProps) {
-//export default function BudgetCalendar() {
-  //const [currentDate, setCurrentDate] = useState(new Date());
-  //const [[page, direction], setPage] = useState([0, 0]);
   const { transactions } = useApp();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
-  const today = new Date(); //今日の日付を取得
+  const today = new Date();
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart);
@@ -89,8 +87,8 @@ export default function BudgetCalendar({ currentDate, page, direction, onPaginat
           {calendarDays.map(day => {
             const dayTransactions = getTransactionsForDay(day);
             const isCurrentMonth = isSameMonth(day, monthStart);
-
-            const isToday = isSameDay(day, today); //今日かどうかを判定
+            const isToday = isSameDay(day, today);
+            
             const dailyIncome = dayTransactions
               .filter(t => t.type === 'income')
               .reduce((sum, t) => sum + t.amount, 0);
@@ -105,7 +103,7 @@ export default function BudgetCalendar({ currentDate, page, direction, onPaginat
             return (
               <div
                 key={day.toString()}
-                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`} //isTodayがtrueの場合にstyles.todayクラスを追加
+                className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`}
                 onClick={() => handleDayClick(day)}
               >
                 <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>

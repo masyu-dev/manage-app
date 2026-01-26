@@ -11,6 +11,8 @@ import {
 import { ja } from 'date-fns/locale';
 import { Shift, Job } from '@/types';
 import { calculateShiftSalary } from '@/lib/calculations';
+// ▼ 修正1: useApp をインポート
+import { useApp } from '@/lib/store';
 import styles from './VerticalCalendar.module.css';
 
 interface VerticalCalendarProps {
@@ -30,6 +32,9 @@ export default function VerticalCalendar({
   onDayClick,
   onShiftClick,
 }: VerticalCalendarProps) {
+  // ▼ 修正2: userConfig (時給) を取得
+  const { userConfig } = useApp();
+
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -105,7 +110,13 @@ export default function VerticalCalendar({
                         {shift.startTime}-{shift.endTime}
                       </span>
                       <span style={{ fontSize: '0.7rem', opacity: 0.9 }}>
-                        ¥{calculateShiftSalary(shift, nightWageMultiplier).toLocaleString()}
+                        {/* ▼ 修正3: 引数を4つ渡す形に変更 */}
+                        ¥{calculateShiftSalary(
+                          shift, 
+                          jobs, 
+                          userConfig.hourlyWage, 
+                          nightWageMultiplier
+                        ).toLocaleString()}
                       </span>
                     </div>
                   );
