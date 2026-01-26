@@ -14,7 +14,8 @@ import BudgetSettings from '@/components/BudgetSettings';
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function SummaryView() {
-  const { shifts, transactions, userConfig, updateUserConfig } = useApp();
+  // ▼ 修正箇所1: jobs を追加で取得
+  const { shifts, transactions, userConfig, updateUserConfig, jobs } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -23,7 +24,15 @@ export default function SummaryView() {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
 
-  const monthlySalary = calculateMonthlySalary(shifts, year, month);
+  // ▼ 修正箇所2: 足りない引数 (jobs, hourlyWage, nightWageMultiplier) を追加
+  const monthlySalary = calculateMonthlySalary(
+    shifts,
+    jobs,
+    year,
+    month,
+    userConfig.hourlyWage,
+    userConfig.nightWageMultiplier
+  );
 
   const currentMonthTransactions = transactions.filter(t =>
     isWithinInterval(new Date(t.date), { start: monthStart, end: monthEnd })
