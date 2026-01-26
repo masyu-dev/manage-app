@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   format,
@@ -24,13 +24,38 @@ import {
 } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useApp } from '@/lib/store';
-import { ChevronLeft, ChevronRight, Plus, Share2, X, Calculator, Moon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Share2, X, Calculator, Moon, AlertCircle, CheckCircle } from 'lucide-react';
 import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Job, Shift } from '@/types';
 
-// --- 給与明細モーダル (Hooks順序修正版) ---
+// --- トーストコンポーネント ---
+type ToastType = 'success' | 'error';
+const Toast = ({ message, type, onClose }: { message: string; type: ToastType; onClose: () => void }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = type === 'error' ? '#ef4444' : '#333';
+  const Icon = type === 'error' ? AlertCircle : CheckCircle;
+
+  return createPortal(
+    <div style={{
+      position: 'fixed', bottom: '24px', right: '24px', backgroundColor: bgColor,
+      color: '#fff', padding: '12px 24px', borderRadius: '8px', zIndex: 9999,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.2)', animation: 'fadeIn 0.3s ease-out',
+      display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold'
+    }}>
+      <Icon size={20} />
+      {message}
+    </div>,
+    document.body
+  );
+};
+
+// --- 給与明細モーダル ---
 const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: { 
   isOpen: boolean; 
   onClose: () => void; 
@@ -38,35 +63,33 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
   payDate: Date | undefined;
   shifts: Shift[] 
 }) => {
-  // 【重要】Hooksは必ずコンポーネントの最初（if文によるリターンより前）に呼ぶ必要があります
   const { userConfig } = useApp();
 
-  const calculation = useMemo(() => {
-    // データが足りない場合は計算しない (nullを返す)
+  const calculation = React.useMemo(() => {
     if (!job || !payDate) return null;
 
     const cutoffDay = job.closingDate || 31; 
     let periodEnd = new Date(payDate);
-    let tentativeEnd = setDate(new Date(payDate), cutoffDay);
     
-    // 締め日判定ロジック
+    // 締め日判定
     if (payDate.getDate() <= cutoffDay && cutoffDay !== 31) {
        if (payDate.getDate() <= cutoffDay) {
-           tentativeEnd = subMonths(tentativeEnd, 1);
+           periodEnd = new Date(periodEnd.getFullYear(), periodEnd.getMonth() - 1, cutoffDay);
+       } else {
+           periodEnd.setDate(cutoffDay);
        }
     } else if (payDate.getDate() > cutoffDay) {
-       tentativeEnd = setDate(new Date(payDate), cutoffDay);
+       periodEnd.setDate(cutoffDay);
     } else {
-       tentativeEnd = subMonths(new Date(payDate), 1);
-       tentativeEnd = endOfMonth(tentativeEnd);
+       periodEnd = new Date(periodEnd.getFullYear(), periodEnd.getMonth() - 1, 1);
+       periodEnd = endOfMonth(periodEnd);
     }
 
-    periodEnd = endOfDay(tentativeEnd);
-    let periodStart = startOfDay(addDays(subMonths(periodEnd, 1), 1));
+    periodEnd = endOfDay(periodEnd);
+    let periodStart = startOfDay(addDays(new Date(periodEnd.getFullYear(), periodEnd.getMonth() - 1, periodEnd.getDate()), 1));
 
     const targetShifts = shifts.filter((shift) => {
       const shiftDate = new Date(shift.date);
-      // jobがundefinedの可能性も考慮して ?. アクセスまたはIDチェック
       return job.id && shift.jobId === job.id && 
              shiftDate >= periodStart && 
              shiftDate <= periodEnd;
@@ -121,7 +144,6 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
     };
   }, [job, payDate, shifts, userConfig.nightWageMultiplier]);
 
-  // 【重要】Hooksを呼び終わった後に、表示・非表示の判定をしてリターンする
   if (!isOpen || !job || !calculation) return null;
 
   return createPortal(
@@ -183,19 +205,6 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
   );
 };
 
-// --- Toast (変更なし) ---
-const Toast = ({ message, onClose }: { message: string; onClose: () => void }) => {
-  useEffect(() => {
-    const timer = setTimeout(onClose, 3000);
-    return () => clearTimeout(timer);
-  }, [onClose]);
-  return createPortal(
-    <div style={{ position: 'fixed', bottom: '24px', right: '24px', backgroundColor: '#333', color: '#fff', padding: '12px 24px', borderRadius: '8px', zIndex: 9999, animation: 'fadeIn 0.3s ease-out' }}>
-      {message}
-    </div>, document.body
-  );
-};
-
 const variants = {
   enter: (direction: number) => ({ x: direction > 0 ? 100 : -100, opacity: 0 }),
   center: { zIndex: 1, x: 0, opacity: 1 },
@@ -206,14 +215,17 @@ export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [[page, direction], setPage] = useState([0, 0]);
   const { shifts, jobs } = useApp();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
   const [isPayslipOpen, setIsPayslipOpen] = useState(false);
   const [selectedPaydayInfo, setSelectedPaydayInfo] = useState<{job: Job, date: Date} | null>(null);
+
   const today = new Date();
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<ToastType>('success');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -225,6 +237,7 @@ export default function Calendar() {
     setPage([page + newDirection, newDirection]);
     setCurrentDate(newDirection > 0 ? addMonths(currentDate, 1) : subMonths(currentDate, 1));
   };
+
   const nextMonth = () => paginate(1);
   const prevMonth = () => paginate(-1);
 
@@ -257,8 +270,9 @@ export default function Calendar() {
     setIsPayslipOpen(true);
   };
 
-  const triggerToast = (msg: string) => {
+  const triggerToast = (msg: string, type: ToastType = 'success') => {
     setToastMessage(msg);
+    setToastType(type);
     setShowToast(true);
   };
 
@@ -292,8 +306,7 @@ export default function Calendar() {
 
       <AnimatePresence initial={false} custom={direction} mode="wait">
         <motion.div
-          key={page} custom={direction} variants={variants}
-          initial="enter" animate="center" exit="exit"
+          key={page} custom={direction} variants={variants} initial="enter" animate="center" exit="exit"
           transition={{ x: { type: "spring", stiffness: 600, damping: 40 }, opacity: { duration: 0.2 } }}
           className={styles.grid}
         >
@@ -307,8 +320,6 @@ export default function Calendar() {
             const isSaturday = day.getDay() === 6;
             const isSunday = day.getDay() === 0;
             const isToday = isSameDay(day, today);
-            
-            // その日の給料日リスト
             const payDayJobs = jobs.filter(j => j.payDay === day.getDate());
 
             return (
@@ -317,29 +328,17 @@ export default function Calendar() {
                 className={`${styles.dayCell} ${!isCurrentMonth ? styles.disabled : ''} ${isToday ? styles.today : ''}`}
                 onClick={() => handleDayClick(day)}
               >
-                {/* ▼ 日付と給料日バッジのヘッダー ▼ */}
                 <div className={styles.cellHeader}>
-                    <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>
-                        {format(day, 'd')}
-                    </div>
-                    
-                    {/* 給料日バッジコンテナ（右端） */}
+                    <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
                     <div className={styles.badgeContainer}>
                         {payDayJobs.map((j) => (
-                            <div
-                                key={`payday-${j.id}`}
-                                className={styles.paydayBadge}
-                                onClick={(e) => handlePaydayClick(e, j, day)}
-                                style={{ backgroundColor: j.color }}
-                                title="タップして明細を確認"
-                            >
+                            <div key={`payday-${j.id}`} className={styles.paydayBadge} onClick={(e) => handlePaydayClick(e, j, day)} style={{ backgroundColor: j.color }} title="タップして明細を確認">
                                 💰給料日
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* シフトリスト */}
                 <div className={styles.shiftList}>
                   {dayShifts.map(shift => {
                     const job = jobs.find(j => j.id === shift.jobId);
@@ -361,29 +360,24 @@ export default function Calendar() {
                     );
                   })}
                 </div>
-                
-                {isCurrentMonth && (
-                  <button className={styles.addButton}><Plus size={16} /></button>
-                )}
+                {isCurrentMonth && <button className={styles.addButton}><Plus size={16} /></button>}
               </div>
             );
           })}
         </motion.div>
       </AnimatePresence>
 
-      {/* シフト編集モーダル */}
       {isModalOpen && (
         <ShiftForm
           initialDate={selectedDate}
           existingShift={selectedShift}
           onClose={() => setIsModalOpen(false)}
-          onSave={() => triggerToast('シフトを保存しました！')}
-          onDelete={() => triggerToast('シフトを削除しました。')}
+          onSave={() => triggerToast('シフトを保存しました！', 'success')}
+          onDelete={() => triggerToast('シフトを削除しました。', 'success')}
           onToast={triggerToast}
         />
       )}
 
-      {/* 給与明細モーダル */}
       <PayslipModal 
         isOpen={isPayslipOpen}
         onClose={() => setIsPayslipOpen(false)}
@@ -392,7 +386,7 @@ export default function Calendar() {
         shifts={shifts}
       />
 
-      {showToast && <Toast message={toastMessage} onClose={() => setShowToast(false)} />}
+      {showToast && <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />}
     </div>
   );
 }

@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/lib/store';
-// ▼ 作成した calculations からインポート
+// ▼ 計算ロジックのインポート
 import { calculateMonthlySalary, calculateShiftSalary, calculateDuration } from '@/lib/calculations';
 import { format, subMonths, addMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, X, Trash2, Pencil, Moon } from 'lucide-react'; // Moonアイコン追加
+import { ChevronLeft, ChevronRight, Plus, X, Trash2, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#1A535C', '#FF9F1C', '#2EC4B6', '#E71D36'];
@@ -55,13 +55,13 @@ export default function SalaryView() {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth() + 1;
 
-  // ▼▼▼ 修正箇所: 計算関数に jobs と デフォルト時給 を渡す ▼▼▼
+  // ▼▼▼ 修正箇所: 引数に jobs と defaultWage を追加 ▼▼▼
   const monthlySalary = calculateMonthlySalary(
     shifts, 
-    jobs, 
+    jobs,                  // 追加: バイト先リスト
     year, 
     month, 
-    userConfig.hourlyWage, 
+    userConfig.hourlyWage, // 追加: デフォルト時給
     userConfig.nightWageMultiplier
   );
 
@@ -73,7 +73,6 @@ export default function SalaryView() {
   const totalHours = currentMonthShifts.reduce((acc, shift) => {
     return acc + calculateDuration(shift.startTime, shift.endTime, shift.breakTime);
   }, 0);
-  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
   const paginate = (newDirection: number) => {
     setPage([page + newDirection, newDirection]);
@@ -292,9 +291,13 @@ export default function SalaryView() {
           >
             {currentMonthShifts.map(shift => {
               const job = jobs.find(j => j.id === shift.jobId);
-              // ▼▼▼ 修正箇所: 計算関数に jobs と デフォルト時給 を渡す ▼▼▼
-              const salary = calculateShiftSalary(shift, jobs, userConfig.hourlyWage, userConfig.nightWageMultiplier);
-              // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+              // ▼▼▼ 修正箇所: 引数に jobs と defaultWage を追加 ▼▼▼
+              const salary = calculateShiftSalary(
+                shift, 
+                jobs,                  // 追加
+                userConfig.hourlyWage, // 追加
+                userConfig.nightWageMultiplier
+              );
               
               return (
                 <div key={shift.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
