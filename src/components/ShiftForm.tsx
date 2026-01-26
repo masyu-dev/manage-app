@@ -5,7 +5,8 @@ import { useApp } from '@/lib/store';
 import { Shift } from '@/types';
 import { format } from 'date-fns';
 import { createPortal } from 'react-dom';
-import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X, Watch, ChevronDown } from 'lucide-react';
+import { calculateShiftSalary } from '@/lib/calculations';
+import { Clock, Briefcase, Calendar as CalendarIcon, Save, Trash2, X, Watch, ChevronDown, Coins } from 'lucide-react';
 import styles from './ShiftForm.module.css';
 
 interface ShiftFormProps {
@@ -87,7 +88,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation removed for cross-day shifts
+    // 日をまたぐシフト（例：22:00〜05:00）を許容するためバリデーションを削除します
 
     let currentWage = userConfig.hourlyWage;
     if (jobId) {
@@ -162,7 +163,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   return createPortal(
     <div className={styles.overlay} onPointerDown={(e) => e.stopPropagation()}>
       <div
-        className={`${styles.modal} ${isShaking ? styles.shake : ''}`}
+        className={`${styles.modal} ${isShaking ? styles.shake : ''}`} // シェイク用のクラスを適用
         style={{
           animation: isShaking ? 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both' : 'none',
           transform: 'translate3d(0, 0, 0)'
@@ -394,7 +395,52 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             )}
           </div>
 
-          <div style={{ marginTop: '1rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '1rem' }}>
+          {/* Salary Preview */}
+          <div style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            backgroundColor: 'hsl(var(--primary) / 0.05)',
+            borderRadius: '12px',
+            border: '1px dashed hsl(var(--primary) / 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.25rem'
+          }}>
+            <div style={{ fontSize: '0.75rem', color: '#666', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Coins size={14} /> 概算給与
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+              ¥{(() => {
+                let currentWage = userConfig.hourlyWage;
+                if (jobId) {
+                  const job = jobs.find(j => j.id === jobId);
+                  if (job) currentWage = job.hourlyWage;
+                }
+                const tempShift: Shift = {
+                  id: 'preview',
+                  date,
+                  startTime,
+                  endTime,
+                  breakTime,
+                  hourlyWage: currentWage,
+                  jobId: jobId || undefined,
+                };
+                return calculateShiftSalary(tempShift, userConfig.nightWageMultiplier).toLocaleString();
+              })()}
+              <span style={{ fontSize: '0.875rem', fontWeight: 'normal', color: '#999', marginLeft: '0.5rem' }}>
+                (時給: ¥{(() => {
+                  let currentWage = userConfig.hourlyWage;
+                  if (jobId) {
+                    const job = jobs.find(j => j.id === jobId);
+                    if (job) currentWage = job.hourlyWage;
+                  }
+                  return currentWage.toLocaleString();
+                })()})
+              </span>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
             {!showProfileSave ? (
               <button type="button" onClick={() => setShowProfileSave(true)} className="btn btn-ghost" style={{ width: '100%', fontSize: '0.9rem', color: 'hsl(var(--primary))' }}>
                 + このシフト構成をテンプレート保存

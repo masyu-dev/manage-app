@@ -30,33 +30,26 @@ export function calculateShiftSalary(shift: Shift, nightWageMultiplier: number =
   let totalWorkMinutes = endMin - startMin - shift.breakTime;
   if (totalWorkMinutes <= 0) return 0;
 
-  // Calculate night minutes (22:00 - 05:00 next day)
-  // 22:00 = 22 * 60 = 1320
-  // 05:00 (next day) = 29 * 60 = 1740
+  // Calculate night minutes (22:00 - 05:00)
+  // We check three windows to handle shifts spanning midnight or starting early morning:
+  // 1. 00:00 - 05:00 (0 to 300)
+  // 2. 22:00 - 29:00 (1320 to 1740)
+  // 3. 46:00 - 53:00 (2760 to 3180) - Extra window just in case of very long shifts
 
-  const nightStart = 22 * 60; // 22:00
-  const nightEnd = 29 * 60;   // 05:00 next day (29:00)
+  const getOverlap = (start: number, end: number, winStart: number, winEnd: number) => {
+    return Math.max(0, Math.min(end, winEnd) - Math.max(start, winStart));
+  };
 
-  // Calculate overlap
-  // Case 1: Standard night shift (e.g. 22:00 - 29:00)
-  const overlapStart = Math.max(startMin, nightStart);
-  const overlapEnd = Math.min(endMin, nightEnd);
+  let nightMinutes = getOverlap(startMin, endMin, 0, 300) +
+    getOverlap(startMin, endMin, 1320, 1740) +
+    getOverlap(startMin, endMin, 2760, 3180);
 
-  let nightMinutes = 0;
-  if (overlapStart < overlapEnd) {
-    nightMinutes = overlapEnd - overlapStart;
-  }
-
-  // Adjust break time from normal/night hours?
-  // Simplification: Subtract break time proportionally or from "normal" hours first?
-  // Legal standard usually requires break during work. Let's assume break is taken from non-night hours first for user benefit, or just average it.
-  // Actually, easiest and safer for now: Ratio of night hours to total duration * break time is deducted from night minutes.
-
+  // Adjust break time from normal/night hours proportionally
   const totalDurationRaw = endMin - startMin;
-  if (totalDurationRaw > 0) {
+  if (totalDurationRaw > 0 && shift.breakTime > 0) {
     const nightRatio = nightMinutes / totalDurationRaw;
     const nightBreak = shift.breakTime * nightRatio;
-    nightMinutes -= nightBreak;
+    nightMinutes = Math.max(0, nightMinutes - nightBreak);
   }
 
   const normalMinutes = totalWorkMinutes - nightMinutes;
