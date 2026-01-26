@@ -30,20 +30,21 @@ import ShiftForm from './ShiftForm';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Job, Shift } from '@/types';
 
-// --- 給与明細モーダル (深夜手当対応版) ---
+// --- 給与明細モーダル (Hooks順序修正版) ---
 const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: { 
   isOpen: boolean; 
   onClose: () => void; 
-  job: Job; 
-  payDate: Date; 
+  job: Job | undefined; 
+  payDate: Date | undefined;
   shifts: Shift[] 
 }) => {
-  // ストアから設定（深夜割増率）を取得
+  // 【重要】Hooksは必ずコンポーネントの最初（if文によるリターンより前）に呼ぶ必要があります
   const { userConfig } = useApp();
-  
-  if (!isOpen || !job) return null;
 
   const calculation = useMemo(() => {
+    // データが足りない場合は計算しない (nullを返す)
+    if (!job || !payDate) return null;
+
     const cutoffDay = job.closingDate || 31; 
     let periodEnd = new Date(payDate);
     let tentativeEnd = setDate(new Date(payDate), cutoffDay);
@@ -65,70 +66,48 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
 
     const targetShifts = shifts.filter((shift) => {
       const shiftDate = new Date(shift.date);
-      return shift.jobId === job.id && 
+      // jobがundefinedの可能性も考慮して ?. アクセスまたはIDチェック
+      return job.id && shift.jobId === job.id && 
              shiftDate >= periodStart && 
              shiftDate <= periodEnd;
     });
 
     let totalMinutes = 0;
-    let totalNightMinutes = 0; // 深夜労働時間（分）
+    let totalNightMinutes = 0;
 
     targetShifts.forEach((shift) => {
       const [sH, sM] = shift.startTime.split(':').map(Number);
       const [eH, eM] = shift.endTime.split(':').map(Number);
       
-      // 分換算 (0:00 = 0, 24:00 = 1440)
       let startMin = sH * 60 + sM;
       let endMin = eH * 60 + eM;
       
-      // 日またぎ対応 (終了が開始より前なら+24時間)
       if (endMin < startMin) endMin += 1440;
       
-      // 1. 総拘束時間の計算
       const duration = endMin - startMin;
-      
-      // 2. 休憩時間を引く (実労働時間)
       const breakMins = shift.breakTime || 0;
       const effectiveDuration = Math.max(0, duration - breakMins);
       totalMinutes += effectiveDuration;
 
-      // 3. 深夜時間の計算 (22:00〜05:00)
-      // 深夜帯の定義（分）: 
-      // 当日 00:00-05:00 = 0 - 300
-      // 当日 22:00-29:00 = 1320 - 1740 (翌05:00)
-      
       const getOverlap = (start: number, end: number, rStart: number, rEnd: number) => {
         return Math.max(0, Math.min(end, rEnd) - Math.max(start, rStart));
       };
 
-      // 0:00〜5:00 との重複 (早朝・深夜)
       const earlyMorningOverlap = getOverlap(startMin, endMin, 0, 300);
-      // 22:00〜29:00 (翌5:00) との重複
       const lateNightOverlap = getOverlap(startMin, endMin, 1320, 1740);
 
-      // そのシフトの深夜時間合計
       let shiftNightMinutes = earlyMorningOverlap + lateNightOverlap;
-
-      // ※休憩時間が深夜にかぶっている可能性を考慮し、
-      // 「計算された深夜時間」が「実労働時間」を超えないように補正する
-      // (例: 22:00-23:00勤務で休憩60分なら、深夜労働は0分)
       shiftNightMinutes = Math.min(shiftNightMinutes, effectiveDuration);
 
       totalNightMinutes += shiftNightMinutes;
     });
 
-    // 集計
     const totalHours = Math.max(0, totalMinutes / 60);
     const hourlyWage = job.hourlyWage || 1000;
-    const multiplier = userConfig.nightWageMultiplier || 1.25; // デフォルト1.25倍
+    const multiplier = userConfig.nightWageMultiplier || 1.25;
     
-    // 基本給 = 実労働時間 × 時給
     const baseSalary = Math.floor((totalMinutes / 60) * hourlyWage);
-    
-    // 深夜割増分 = 深夜時間 × 時給 × (倍率 - 1) 
-    // ※基本給の中に1.0倍分は既に入っているため、0.25倍分だけ足す
     const nightAllowance = Math.floor((totalNightMinutes / 60) * hourlyWage * (multiplier - 1));
-    
     const totalAmount = baseSalary + nightAllowance;
 
     return {
@@ -137,10 +116,13 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
       count: targetShifts.length,
       hours: totalHours.toFixed(1),
       amount: totalAmount.toLocaleString(),
-      nightHours: (totalNightMinutes / 60).toFixed(1), // 表示用に深夜時間も計算
+      nightHours: (totalNightMinutes / 60).toFixed(1),
       shifts: targetShifts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     };
   }, [job, payDate, shifts, userConfig.nightWageMultiplier]);
+
+  // 【重要】Hooksを呼び終わった後に、表示・非表示の判定をしてリターンする
+  if (!isOpen || !job || !calculation) return null;
 
   return createPortal(
     <div className={styles.modalOverlay} onClick={onClose}>
@@ -156,7 +138,6 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
           <button onClick={onClose} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={24} color="#666" /></button>
         </div>
 
-        {/* ヘッダー情報 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <div style={{ width: '4px', height: '40px', backgroundColor: job.color, borderRadius: '2px' }}></div>
           <div>
@@ -167,7 +148,6 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
           </div>
         </div>
 
-        {/* 金額・時間表示 */}
         <div className={styles.summaryGrid}>
           <div className={styles.summaryBox}>
             <div style={{ fontSize: '0.8rem', color: '#666' }}>勤務時間</div>
@@ -184,7 +164,6 @@ const PayslipModal = ({ isOpen, onClose, job, payDate, shifts }: {
           </div>
         </div>
 
-        {/* 内訳リスト */}
         <div className={styles.shiftList}>
            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '8px', color: '#666' }}>シフト内訳 ({calculation.count}日)</div>
            {calculation.shifts.map((s) => (
@@ -408,8 +387,8 @@ export default function Calendar() {
       <PayslipModal 
         isOpen={isPayslipOpen}
         onClose={() => setIsPayslipOpen(false)}
-        job={selectedPaydayInfo?.job as Job}
-        payDate={selectedPaydayInfo?.date as Date}
+        job={selectedPaydayInfo?.job}
+        payDate={selectedPaydayInfo?.date}
         shifts={shifts}
       />
 
