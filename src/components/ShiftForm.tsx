@@ -15,7 +15,6 @@ interface ShiftFormProps {
   onClose: () => void;
   onSave?: () => void;
   onDelete?: () => void;
-  // onToastの型定義を拡張（第2引数でタイプを受け取れるように）
   onToast?: (msg: string, type?: 'success' | 'error') => void;
 }
 
@@ -31,7 +30,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
   const [showProfileSave, setShowProfileSave] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // シェイクアニメーション用State
   const [isShaking, setIsShaking] = useState(false);
 
   const [isBreakPickerOpen, setIsBreakPickerOpen] = useState(false);
@@ -65,7 +63,6 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     }
   }, [isBreakPickerOpen]);
 
-  // Simple UUID v4 generator fallback
   const generateId = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
       const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -73,22 +70,18 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     });
   };
 
-  // エラー時の演出実行関数
   const triggerErrorEffect = (msg: string) => {
-    // 1. 赤色トースト表示
     if (onToast) {
       onToast(msg, 'error');
     } else {
       alert(msg);
     }
 
-    // 2. フォームを揺らす
     setIsShaking(true);
-    setTimeout(() => setIsShaking(false), 500); // 0.5秒後に揺れを止める
+    setTimeout(() => setIsShaking(false), 500);
 
-    // 3. スマホを振動させる（Android等対応機種のみ）
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate(200); // 200ms振動
+      navigator.vibrate(200);
     }
   };
 
@@ -139,7 +132,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
     });
     setShowProfileSave(false);
     setProfileName('');
-    
+
     if (onToast) {
       onToast('テンプレートを保存しました', 'success');
     } else {
@@ -172,12 +165,10 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
       <div
         className={`${styles.modal} ${isShaking ? styles.shake : ''}`} // シェイク用のクラスを適用
         style={{
-          // シェイクアニメーションの定義（インラインスタイルで簡易実装）
           animation: isShaking ? 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both' : 'none',
           transform: 'translate3d(0, 0, 0)'
         }}
       >
-        {/* CSSアニメーション用のstyleタグ埋め込み */}
         <style>{`
           @keyframes shake {
             10%, 90% { transform: translate3d(-1px, 0, 0); }
@@ -273,18 +264,17 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Watch size={16} /> 休憩時間
             </label>
-            
-            {/* 1. トリガー行（現在の設定値を表示・クリックで開閉） */}
-            <div 
-              className="input" 
+
+            <div
+              className="input"
               onClick={() => setIsBreakPickerOpen(!isBreakPickerOpen)}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 cursor: 'pointer',
-                backgroundColor: isBreakPickerOpen ? '#f0f9ff' : '#fff',
-                borderColor: isBreakPickerOpen ? 'hsl(var(--primary))' : 'var(--border)',
+                backgroundColor: isBreakPickerOpen ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card))',
+                borderColor: isBreakPickerOpen ? 'hsl(var(--primary))' : 'hsl(var(--border))',
                 transition: 'all 0.2s'
               }}
             >
@@ -294,19 +284,19 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
               <ChevronDown size={16} style={{
                 transform: isBreakPickerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                 transition: 'transform 0.2s',
-                color: '#666'
+                color: 'hsl(var(--foreground) / 0.6)'
               }} />
             </div>
 
             {isBreakPickerOpen && (
-              <div style={{ 
-                marginTop: '0px', // 入力欄とくっつける
-                border: '1px solid var(--border)', 
-                borderTop: 'none', // 上の線は消して一体感を出す
+              <div style={{
+                marginTop: '0px',
+                border: '1px solid hsl(var(--border))',
+                borderTop: 'none',
                 borderBottomLeftRadius: '8px',
                 borderBottomRightRadius: '8px',
                 overflow: 'hidden',
-                backgroundColor: '#fff',
+                backgroundColor: 'hsl(var(--card))',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                 animation: 'slideDown 0.2s ease-out',
                 position: 'relative'
@@ -318,16 +308,15 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                   right: 0,
                   height: '40px',
                   marginTop: '-20px',
-                  backgroundColor: '#f0f9ff',
-                  borderTop: '1px solid #e0f2fe',
-                  borderBottom: '1px solid #e0f2fe',
+                  backgroundColor: 'hsl(var(--primary) / 0.1)',
+                  borderTop: '1px solid hsl(var(--primary) / 0.2)',
+                  borderBottom: '1px solid hsl(var(--primary) / 0.2)',
                   pointerEvents: 'none',
                   zIndex: 0
                 }}></div>
 
                 <div style={{ display: 'flex', height: '180px' }}>
-                  {/* 時間の列 */}
-                  <div 
+                  <div
                     ref={hoursRef}
                     style={{
                       flex: 1,
@@ -351,7 +340,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
-                          color: breakHours === h ? 'hsl(var(--primary))' : '#999',
+                          color: breakHours === h ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.4)',
                           fontWeight: breakHours === h ? 'bold' : 'normal',
                           fontSize: breakHours === h ? '1.1rem' : '1rem',
                           transition: 'all 0.2s',
@@ -364,8 +353,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                     <div style={{ height: '70px' }}></div>
                   </div>
 
-                  {/* 分の列 */}
-                  <div 
+                  <div
                     ref={minutesRef}
                     style={{
                       flex: 1,
@@ -375,7 +363,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                       position: 'relative',
                       zIndex: 1,
                       scrollSnapType: 'y mandatory',
-                      borderLeft: '1px solid #f0f0f0'
+                      borderLeft: '1px solid hsl(var(--border))'
                     }}
                   >
                     <div style={{ height: '70px' }}></div>
@@ -390,7 +378,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
-                          color: breakMinutes === m ? 'hsl(var(--primary))' : '#999',
+                          color: breakMinutes === m ? 'hsl(var(--primary))' : 'hsl(var(--foreground) / 0.4)',
                           fontWeight: breakMinutes === m ? 'bold' : 'normal',
                           fontSize: breakMinutes === m ? '1.1rem' : '1rem',
                           transition: 'all 0.2s',
@@ -454,7 +442,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
 
           <div style={{ marginTop: '1rem', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
             {!showProfileSave ? (
-              <button type="button" onClick={() => setShowProfileSave(true)} className="btn btn-ghost" style={{ width: '100%', fontSize: '0.9rem', color: 'var(--primary)' }}>
+              <button type="button" onClick={() => setShowProfileSave(true)} className="btn btn-ghost" style={{ width: '100%', fontSize: '0.9rem', color: 'hsl(var(--primary))' }}>
                 + このシフト構成をテンプレート保存
               </button>
             ) : (
@@ -479,7 +467,7 @@ export default function ShiftForm({ initialDate, existingShift, onClose, onSave,
             </button>
 
             {existingShift && (
-              <button type="button" onClick={handleDelete} className="btn btn-ghost" style={{ width: '100%', color: 'var(--danger)', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <button type="button" onClick={handleDelete} className="btn btn-ghost" style={{ width: '100%', color: 'hsl(var(--danger))', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Trash2 size={16} /> このシフトを削除
               </button>
             )}
