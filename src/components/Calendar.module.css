@@ -32,6 +32,13 @@
 :global([data-theme='dark']) .monthTitle,
 :global([data-theme='dark-gray']) .monthTitle {
   color: white;
+  background-color: transparent;
+}
+
+:global([data-theme='dark']) .monthTitle option,
+:global([data-theme='dark-gray']) .monthTitle option {
+  background-color: #333;
+  color: white;
 }
 
 .grid {
@@ -193,6 +200,15 @@
   .today .dateNumber {
     width: 20px;
     height: 20px;
-    font-size: 0.7rem;
   }
+}
+
+.payDayBadge {
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.payDayBadge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  filter: brightness(1.05);
 }

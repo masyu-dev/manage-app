@@ -99,3 +99,31 @@
     opacity: 1;
   }
 }
+
+/* Fix for Select inputs in Dark Mode having white background and white text */
+:global([data-theme='dark']) .modal select option,
+:global([data-theme='dark-gray']) .modal select option {
+  background-color: #333;
+  color: white;
+}
+
+/* Ensure Icons are visible in dark mode inputs or labels */
+:global([data-theme='dark']) .input,
+:global([data-theme='dark-gray']) .input {
+  color: white;
+  /* Ensure text inputs are white text */
+  background-color: transparent;
+  /* Or specific dark bg */
+}
+
+/* Specific fix for the user reported issue, scoped to .modal to satisfy CSS Modules */
+.modal select {
+  color: inherit;
+  /* Should inherit from input/form color */
+  background-color: inherit;
+}
+
+.modal option {
+  color: initial;
+  /* Reset options to default usually black */
+}

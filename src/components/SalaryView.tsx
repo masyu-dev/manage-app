@@ -25,6 +25,14 @@ const variants = {
   }),
 };
 
+// Helper for generating IDs since crypto.randomUUID might not be available in all envs
+const generateId = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 export default function SalaryView() {
   const { shifts, userConfig, updateUserConfig, jobs, addJob, updateJob, deleteJob } = useApp();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -36,7 +44,7 @@ export default function SalaryView() {
   const [newJobColor, setNewJobColor] = useState(COLORS[0]);
   const [newJobPayDay, setNewJobPayDay] = useState('25');
   const [newJobClosingDate, setNewJobClosingDate] = useState('31'); // デフォルト末日(31)
-  
+
   const [isJobFormOpen, setIsJobFormOpen] = useState(false);
   const [editingJobId, setEditingJobId] = useState<string | null>(null);
 
@@ -102,7 +110,7 @@ export default function SalaryView() {
       } else {
         addJob({
           ...jobData,
-          id: crypto.randomUUID(),
+          id: generateId(),
         });
       }
 
@@ -330,7 +338,7 @@ export default function SalaryView() {
               <label style={{ fontSize: '0.75rem' }}>時給</label>
               <input className="input" type="number" style={{ width: '100%' }} value={newJobWage} onChange={e => setNewJobWage(e.target.value)} />
             </div>
-            
+
             {/* 給料日・締め日入力欄 (修正: どちらもinputに統一して完全に同じデザインにする) */}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
               <div style={{ flex: 1 }}>
