@@ -26,6 +26,7 @@ import styles from './Calendar.module.css';
 import ShiftForm from './ShiftForm';
 import VerticalCalendar from './VerticalCalendar';
 import ShiftDetail from './ShiftDetail';
+import PaydayModal from './PaydayModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // トーストの種類を定義
@@ -92,6 +93,9 @@ export default function Calendar() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedShift, setSelectedShift] = useState<any>(undefined);
+
+  const [isPaydayModalOpen, setIsPaydayModalOpen] = useState(false);
+  const [paydayModalData, setPaydayModalData] = useState<{ date: Date, job: any } | null>(null);
 
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -268,21 +272,38 @@ export default function Calendar() {
                     onClick={() => handleDayClick(day)}
                   >
                     <div className={`${styles.dateNumber} ${isSaturday ? styles.saturday : ''} ${isSunday ? styles.sunday : ''}`}>{format(day, 'd')}</div>
-                    
+
                     {/* Payday Highlight */}
-                    <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginBottom: '2px' }}>
+                    <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', marginBottom: '4px', flexWrap: 'wrap' }}>
                       {jobs.filter(j => j.payDay === day.getDate()).map(j => (
                         <div
                           key={j.id}
-                          title={`${j.name} 給料日`}
-                          style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            backgroundColor: j.color,
-                            border: '1px solid rgba(0,0,0,0.1)'
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPaydayModalData({ date: day, job: j });
+                            setIsPaydayModalOpen(true);
                           }}
-                        />
+                          className={styles.payDayBadge}
+                          style={{
+                            backgroundColor: j.color,
+                            color: '#fff',
+                            fontSize: '0.65rem',
+                            padding: '1px 6px',
+                            borderRadius: '999px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2px',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                            maxWidth: '100%',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
+                          <span style={{ fontSize: '0.6rem' }}>💴</span>
+                          <span style={{ fontWeight: 600 }}>給料日</span>
+                        </div>
                       ))}
                     </div>
 
@@ -359,6 +380,18 @@ export default function Calendar() {
           />
         )}
       </AnimatePresence>
+
+      {/* Payday Estimate Modal */}
+      {isPaydayModalOpen && paydayModalData && (
+        <PaydayModal
+          isOpen={isPaydayModalOpen}
+          onClose={() => setIsPaydayModalOpen(false)}
+          payDate={paydayModalData.date}
+          job={paydayModalData.job}
+          shifts={shifts}
+          nightWageMultiplier={userConfig.nightWageMultiplier}
+        />
+      )}
 
       {/* Toast */}
       {showToast && <Toast message={toastMessage} type={toastType} onClose={() => setShowToast(false)} />}
