@@ -1,81 +1,106 @@
-import { Shift } from '@/types';
+import { Shift, Job } from '@/types';
 
-export function calculateDuration(startTime: string, endTime: string, breakTimeMinutes: number): number {
-  const [startH, startM] = startTime.split(':').map(Number);
-  const [endH, endM] = endTime.split(':').map(Number);
+/**
+ * 時間文字列 (HH:mm) を分単位の数値に変換
+ */
+export const timeToMinutes = (time: string): number => {
+  if (!time) return 0;
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+};
 
-  let startMinutes = startH * 60 + startM;
-  let endMinutes = endH * 60 + endM;
+/**
+ * 勤務時間（休憩除く）を計算して時間単位（1.5hなど）で返す
+ */
+export const calculateDuration = (startTime: string, endTime: string, breakTime: number = 0): number => {
+  let start = timeToMinutes(startTime);
+  let end = timeToMinutes(endTime);
 
-  if (endMinutes < startMinutes) {
-    endMinutes += 24 * 60; // Handle overnight shifts
-  }
+  // 日またぎ対応
+  if (end < start) end += 1440;
 
-  const durationMinutes = endMinutes - startMinutes - breakTimeMinutes;
-  return Math.max(0, durationMinutes / 60); // Return hours
-}
+  const durationMin = end - start;
+  const effectiveDuration = Math.max(0, durationMin - breakTime);
 
-export function calculateShiftSalary(shift: Shift, nightWageMultiplier: number = 1.25): number {
-  const [startH, startM] = shift.startTime.split(':').map(Number);
-  const [endH, endM] = shift.endTime.split(':').map(Number);
+  return effectiveDuration / 60;
+};
 
-  let startMin = startH * 60 + startM;
-  let endMin = endH * 60 + endM;
+/**
+ * 1つのシフトの給与を計算（深夜手当対応）
+ * 引数に jobs と defaultWage を追加して、常に最新の時給を参照できるようにしています
+ */
+export const calculateShiftSalary = (
+  shift: Shift, 
+  jobs: Job[], 
+  defaultWage: number, 
+  nightMultiplier: number
+): number => {
+  // 1. 時給の特定: 
+  // Job設定の時給 > シフトに保存された時給 > デフォルト時給 の優先順位
+  const job = jobs.find(j => j.id === shift.jobId);
+  const hourlyWage = job ? job.hourlyWage : (shift.hourlyWage || defaultWage);
 
-  if (endMin < startMin) {
-    endMin += 24 * 60;
-  }
+  // 2. 時間の計算（分単位）
+  let startMin = timeToMinutes(shift.startTime);
+  let endMin = timeToMinutes(shift.endTime);
+  
+  if (endMin < startMin) endMin += 1440; // 日またぎ
 
-  // Total work minutes
-  let totalWorkMinutes = endMin - startMin - shift.breakTime;
-  if (totalWorkMinutes <= 0) return 0;
+  const totalDuration = endMin - startMin;
+  const breakMins = shift.breakTime || 0;
+  
+  // 実労働時間（分）
+  const effectiveDuration = Math.max(0, totalDuration - breakMins);
 
-  // Calculate night minutes (22:00 - 05:00 next day)
-  // 22:00 = 22 * 60 = 1320
-  // 05:00 (next day) = 29 * 60 = 1740
-  // We need to check overlap between [startMin, endMin] and [1320, 1740] (and potentially [22:00 previous day, 05:00 current day] if shift starts early morning, but simplified assumption: shift is within 24h window mostly starting day)
-  // Simplified logic: Check intersection with 22:00-29:00 window relative to start day.
+  // 3. 深夜時間の計算 (22:00-05:00)
+  const getOverlap = (s: number, e: number, rS: number, rE: number) => {
+    return Math.max(0, Math.min(e, rE) - Math.max(s, rS));
+  };
 
-  const nightStart = 22 * 60; // 22:00
-  const nightEnd = 29 * 60;   // 05:00 next day (29:00)
+  // 深夜帯の定義: 
+  // 当日 00:00〜05:00 (0分〜300分)
+  // 当日 22:00〜29:00 (1320分〜1740分) ※翌05:00
+  const earlyMorningOverlap = getOverlap(startMin, endMin, 0, 300);
+  const lateNightOverlap = getOverlap(startMin, endMin, 1320, 1740);
 
-  // Calculate overlap
-  const overlapStart = Math.max(startMin, nightStart);
-  const overlapEnd = Math.min(endMin, nightEnd);
+  // 深夜労働時間（休憩時間を考慮せず単純に重複している時間）
+  let rawNightMinutes = earlyMorningOverlap + lateNightOverlap;
 
-  let nightMinutes = 0;
-  if (overlapStart < overlapEnd) {
-    nightMinutes = overlapEnd - overlapStart;
-  }
+  // 休憩時間が深夜にかぶっている可能性を考慮し、
+  // 計算された深夜時間が「実労働時間」を超えないように補正する
+  const effectiveNightMinutes = Math.min(rawNightMinutes, effectiveDuration);
 
-  // Adjust break time from normal/night hours?
-  // Simplification: Subtract break time proportionally or from "normal" hours first?
-  // Legal standard usually requires break during work. Let's assume break is taken from non-night hours first for user benefit, or just average it.
-  // Actually, easiest and safer for now: Ratio of night hours to total duration * break time is deducted from night minutes.
+  // 4. 給与計算
+  // 基本給 = 実労働時間 * 時給
+  const baseSalary = (effectiveDuration / 60) * hourlyWage;
+  
+  // 深夜割増 = 深夜時間 * 時給 * (倍率 - 1)
+  // ※基本給の中に1.0倍分は既に入っているため、0.25倍分だけ足す計算
+  const multiplier = nightMultiplier || 1.25;
+  const nightAllowance = (effectiveNightMinutes / 60) * hourlyWage * (multiplier - 1);
 
-  const totalDurationRaw = endMin - startMin;
-  if (totalDurationRaw > 0) {
-    const nightRatio = nightMinutes / totalDurationRaw;
-    const nightBreak = shift.breakTime * nightRatio;
-    nightMinutes -= nightBreak;
-  }
+  return Math.floor(baseSalary + nightAllowance);
+};
 
-  const normalMinutes = totalWorkMinutes - nightMinutes;
+/**
+ * 月間の予想給与合計を計算
+ */
+export const calculateMonthlySalary = (
+  shifts: Shift[], 
+  jobs: Job[],
+  year: number, 
+  month: number, 
+  defaultWage: number,
+  nightMultiplier: number
+): number => {
+  // 対象月のシフトを抽出
+  const targetShifts = shifts.filter(shift => {
+    const d = new Date(shift.date);
+    return d.getFullYear() === year && (d.getMonth() + 1) === month;
+  });
 
-  const normalHours = Math.max(0, normalMinutes / 60);
-  const nightHours = Math.max(0, nightMinutes / 60);
-
-  const baseWage = shift.hourlyWage;
-  const nightWage = baseWage * nightWageMultiplier;
-
-  return Math.floor(normalHours * baseWage + nightHours * nightWage);
-}
-
-export function calculateMonthlySalary(shifts: Shift[], year: number, month: number, nightWageMultiplier: number = 1.25): number {
-  return shifts
-    .filter(shift => {
-      const date = new Date(shift.date);
-      return date.getFullYear() === year && date.getMonth() + 1 === month;
-    })
-    .reduce((total, shift) => total + calculateShiftSalary(shift, nightWageMultiplier), 0);
-}
+  // 合計計算
+  return targetShifts.reduce((total, shift) => {
+    return total + calculateShiftSalary(shift, jobs, defaultWage, nightMultiplier);
+  }, 0);
+};

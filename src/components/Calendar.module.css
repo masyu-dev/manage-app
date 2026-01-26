@@ -1,198 +1,232 @@
+/* Calendar.module.css */
+
 .calendarContainer {
-  background: hsl(var(--card));
-  border-radius: var(--radius);
-  padding: 1rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  width: 100%;
+  padding: 16px;
+  font-family: inherit;
 }
 
+/* --- ヘッダー（年月など） --- */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-}
-
-/* Force white buttons in dark modes */
-:global([data-theme='dark']) .header button,
-:global([data-theme='dark-gray']) .header button {
-  color: white;
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-:global([data-theme='dark']) .header button:hover,
-:global([data-theme='dark-gray']) .header button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  margin-bottom: 16px;
 }
 
 .monthTitle {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: bold;
+  padding: 0 0.5rem;
+  cursor: pointer;
 }
 
-:global([data-theme='dark']) .monthTitle,
-:global([data-theme='dark-gray']) .monthTitle {
-  color: white;
-}
-
+/* --- カレンダーグリッド --- */
 .grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 1px;
-  background-color: hsl(var(--border));
-  border: 1px solid hsl(var(--border));
-}
-
-.dayHeader {
-  background-color: hsl(var(--background));
-  padding: 0.5rem;
-  text-align: center;
-  font-weight: bold;
-  font-size: 0.875rem;
-}
-
-.dayCell {
-  background-color: hsl(var(--card));
-  min-height: 100px;
-  aspect-ratio: 1 / 1;
-  /* Make cells square */
-  padding: 0.5rem;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  /* Prevent expanding beyond grid column */
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
   overflow: hidden;
-  /* Hide overflow content */
+  background-color: #e5e7eb; /* グリッド線の色 */
+  gap: 1px; /* 線の太さ */
 }
 
-.disabled {
-  background-color: hsl(var(--background));
-  color: #999;
-}
-
-.dateNumber {
+/* 曜日ヘッダー */
+.dayHeader {
+  background-color: #f9fafb;
+  padding: 12px 0;
+  text-align: center;
+  font-weight: 600;
   font-size: 0.875rem;
-  margin-bottom: 0.25rem;
+  color: #4b5563;
 }
 
-.shiftList {
-  flex: 1;
+.dayHeader.sunday { color: #ef4444; }
+.dayHeader.saturday { color: #3b82f6; }
+
+/* --- 日付セル --- */
+.dayCell {
+  background-color: #fff;
+  min-height: 120px;
+  padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  position: relative;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.dayCell:hover {
+  background-color: #f8fafc;
+}
+
+.dayCell.disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* 今日のスタイル */
+.dayCell.today {
+  background-color: #fffbeb;
+}
+
+/* --- 日付とバッジのヘッダー --- */
+.cellHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+/* 日付数字 */
+.dateNumber {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 4px;
+  color: #374151;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dateNumber.sunday { color: #ef4444; }
+.dateNumber.saturday { color: #3b82f6; }
+
+/* --- 給料日バッジ（機能維持） --- */
+.badgeContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.paydayBadge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  transition: transform 0.1s;
+}
+
+.paydayBadge:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+/* --- シフトリスト --- */
+.shiftList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
 }
 
 .shiftItem {
-  background-color: hsl(var(--primary) / 0.1);
-  color: hsl(var(--primary));
+  border-radius: 4px;
+  padding: 2px 6px;
   font-size: 0.75rem;
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 600;
+  color: #fff;
+  transition: opacity 0.2s;
 }
 
+.shiftItem:hover {
+  opacity: 0.8;
+}
+
+/* --- 追加ボタン（修正箇所：デフォルト非表示） --- */
 .addButton {
   position: absolute;
-  bottom: 0.25rem;
-  right: 0.25rem;
-  background: none;
-  border: none;
-  color: hsl(var(--primary));
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s;
-  padding: 0.25rem;
+  bottom: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
+  background-color: transparent;
+  color: #9ca3af;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  
+  /* ▼ ここでデフォルトを透明に設定 ▼ */
+  opacity: 0; 
+  transition: opacity 0.2s, background-color 0.2s, color 0.2s;
 }
 
-.addButton:hover {
-  background-color: hsl(var(--primary) / 0.1);
-}
-
+/* ▼ ホバー時のみ表示する設定 ▼ */
 .dayCell:hover .addButton {
   opacity: 1;
 }
 
-.today .dateNumber {
-  background-color: hsl(var(--primary));
-  /* 数字の背景をメインカラーに */
-  color: white;
-  /* 文字を白に */
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.25rem;
-}
-
-@media (max-width: 768px) {
-  .dayCell {
-    min-height: auto;
-    /* Allow height to shrink */
-    height: 80px;
-    /* Fixed height for consistency */
-    aspect-ratio: auto;
-    /* Remove aspect ratio constraint */
-    padding: 0.1rem;
-  }
-
-  .dateNumber {
-    font-size: 0.75rem;
-  }
-
-  .shiftItem {
-    font-size: 0.65rem;
-    padding: 0.1rem 0.2rem;
-  }
-
-  .today .dateNumber {
-    width: 20px;
-    height: 20px;
-    font-size: 0.7rem;
-  }
-
-  .header {
-    margin-bottom: 0.5rem;
-  }
-
-  .monthTitle {
-    font-size: 1.25rem;
-  }
-
-  .calendarContainer {
-    padding: 0.5rem;
-    /* Reduce padding on mobile */
-  }
-}
-
-.saturday {
+.addButton:hover {
+  background-color: #eff6ff;
   color: #3b82f6;
 }
 
-.sunday {
-  color: #ef4444;
-}
-
-.today .dateNumber {
-  background-color: hsl(var(--primary));
-  color: white;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+/* --- モーダル（機能維持） --- */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 0.25rem;
+  z-index: 10000;
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease-out;
 }
 
-@media (max-width: 768px) {
-  .today .dateNumber {
-    width: 20px;
-    height: 20px;
-    font-size: 0.7rem;
-  }
+.modalContent {
+  background-color: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  animation: scaleIn 0.2s ease-out;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summaryBox {
+  text-align: center;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #fff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
